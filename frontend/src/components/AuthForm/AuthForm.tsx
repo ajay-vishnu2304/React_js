@@ -49,7 +49,7 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);

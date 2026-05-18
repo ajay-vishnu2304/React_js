@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Dashboard from "../../pages/Dashboard";
 import "@testing-library/jest-dom";
@@ -13,6 +13,7 @@ describe("Dashboard Page", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
+    globalThis.fetch = jest.fn();
   });
 
   test("redirects to login if no token is present", () => {
@@ -25,21 +26,20 @@ describe("Dashboard Page", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/");
   });
 
-  test("renders user data from token successfully", () => {
-    const fakePayload = {
+  test("renders user data from API successfully", async () => {
+    const fakeUser = {
       id: 1,
       username: "ajay_vishnu",
       email: "ajay@example.com",
-      role: "admin",
-      exp: Math.floor(Date.now() / 1000) + 3600
+      role: "admin"
     };
+
+    (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => fakeUser,
+    });
     
-    const base64Payload = window.btoa(
-      Array.from(new TextEncoder().encode(JSON.stringify(fakePayload)), (byte) => String.fromCharCode(byte)).join("")
-    );
-    const fakeToken = `header.${base64Payload}.signature`;
-    
-    localStorage.setItem("token", fakeToken);
+    localStorage.setItem("token", "fake-token");
 
     render(
       <MemoryRouter>
@@ -47,27 +47,40 @@ describe("Dashboard Page", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Welcome back,/i)).toBeInTheDocument();
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+
+    const welcomeMsg = await screen.findByText(/Welcome back,/i);
+    expect(welcomeMsg).toBeInTheDocument();
     expect(screen.getAllByText("ajay_vishnu").length).toBeGreaterThan(0);
     expect(screen.getByText("ajay@example.com")).toBeInTheDocument();
     expect(screen.getByText("admin")).toBeInTheDocument();
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:3000/auth/dashboard",
+      expect.objectContaining({
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer fake-token",
+        },
+      })
+    );
   });
 
-  test("clears token and redirects on logout click", () => {
-    const fakePayload = {
+  test("clears token and redirects on logout click", async () => {
+    const fakeUser = {
       id: 1,
       username: "ajay_vishnu",
       email: "ajay@example.com",
-      role: "admin",
-      exp: Math.floor(Date.now() / 1000) + 3600
+      role: "admin"
     };
+
+    (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => fakeUser,
+    });
     
-    const base64Payload = window.btoa(
-      Array.from(new TextEncoder().encode(JSON.stringify(fakePayload)), (byte) => String.fromCharCode(byte)).join("")
-    );
-    const fakeToken = `header.${base64Payload}.signature`;
-    
-    localStorage.setItem("token", fakeToken);
+    localStorage.setItem("token", "fake-token");
 
     render(
       <MemoryRouter>
@@ -75,10 +88,29 @@ describe("Dashboard Page", () => {
       </MemoryRouter>
     );
 
-    const logoutButton = screen.getByRole("button", { name: "Logout" });
+    const logoutButton = await screen.findByRole("button", { name: "Logout" });
     fireEvent.click(logoutButton);
 
     expect(localStorage.getItem("token")).toBeNull();
     expect(mockNavigate).toHaveBeenCalledWith("/");
+  });
+
+  test("redirects to login if API returns error", async () => {
+    (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+    });
+
+    localStorage.setItem("token", "invalid-token");
+
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(localStorage.getItem("token")).toBeNull();
+      expect(mockNavigate).toHaveBeenCalledWith("/");
+    });
   });
 });

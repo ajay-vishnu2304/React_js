@@ -2,27 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 
-interface DecodedToken {
+interface UserInfo {
   id: string | number;
   username: string;
   email: string;
   role: string;
+  first_name?: string;
+  last_name?: string;
+  dob?: string;
+  phone?: string;
 }
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<DecodedToken | null>(null);
-
- 
-  const parseJwt = (token: string): DecodedToken | null => {
-    try {
-      const base64Url = token.split(".")[1];
-      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-      return JSON.parse(window.atob(base64));
-    } catch {
-      return null;
-    }
-  };
+  const [user, setUser] = useState<UserInfo | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -31,15 +24,30 @@ export default function Dashboard() {
       return;
     }
 
-    const decoded = parseJwt(token);
-    if (!decoded) {
-      localStorage.removeItem("token");
-      navigate("/");
-      return;
-    }
+    const fetchDashboardData = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/auth/dashboard", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setUser(decoded);
+        if (!response.ok) {
+          throw new Error("Session expired or invalid");
+        }
+
+        const data = await response.json();
+        setUser(data);
+      } catch (err: unknown) {
+        console.error("Dashboard fetch error:", err);
+        localStorage.removeItem("token");
+        navigate("/");
+      }
+    };
+
+    fetchDashboardData();
   }, [navigate]);
 
   const handleLogout = () => {
