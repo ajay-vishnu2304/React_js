@@ -19,7 +19,7 @@ export default function Dashboard() {
       const base64Url = token.split(".")[1];
       const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
       return JSON.parse(window.atob(base64));
-    } catch (e) {
+    } catch {
       return null;
     }
   };
@@ -38,6 +38,8 @@ export default function Dashboard() {
       return;
     }
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUser(decoded);
   }, [navigate]);
 
