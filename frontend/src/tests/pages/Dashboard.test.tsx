@@ -10,10 +10,17 @@ jest.mock("react-router-dom", () => ({
 }));
 
 describe("Dashboard Page", () => {
+  let consoleSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
     globalThis.fetch = jest.fn();
+    consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
   });
 
   test("redirects to login if no token is present", () => {
@@ -96,9 +103,7 @@ describe("Dashboard Page", () => {
   });
 
   test("redirects to login if API returns error", async () => {
-    (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-    });
+    (globalThis.fetch as jest.Mock).mockRejectedValueOnce(new Error("Network error"));
 
     localStorage.setItem("token", "invalid-token");
 
