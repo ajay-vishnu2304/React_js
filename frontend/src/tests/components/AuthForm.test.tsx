@@ -3,7 +3,6 @@ import { MemoryRouter } from "react-router-dom";
 import AuthForm from "../../components/AuthForm/AuthForm";
 import "@testing-library/jest-dom";
 
-// Mock useNavigate
 const mockNavigate = jest.fn();
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
@@ -14,7 +13,6 @@ describe("AuthForm Component", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
-    // Mock global fetch
     global.fetch = jest.fn();
   });
 
@@ -55,13 +53,12 @@ describe("AuthForm Component", () => {
       </MemoryRouter>
     );
 
-    // Fill valid info except weak password
     fireEvent.change(screen.getByLabelText("Username"), { target: { value: "john_doe" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "john@example.com" } });
     fireEvent.change(screen.getByLabelText("First Name"), { target: { value: "John" } });
     fireEvent.change(screen.getByLabelText("Date of Birth"), { target: { value: "1995-05-15" } });
     fireEvent.change(screen.getByLabelText("Phone Number"), { target: { value: "1234567890" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "weak" } }); // Less than 8 chars, no upper/number/special
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "weak" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
 

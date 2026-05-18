@@ -3,7 +3,6 @@ import { MemoryRouter } from "react-router-dom";
 import Dashboard from "../../pages/Dashboard";
 import "@testing-library/jest-dom";
 
-// Mock useNavigate
 const mockNavigate = jest.fn();
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
@@ -27,18 +26,17 @@ describe("Dashboard Page", () => {
   });
 
   test("renders user data from token successfully", () => {
-    // Fake JWT token representation (header.payload.signature)
-    // Payload contains base64 encoded: {"id":1,"username":"ajay_vishnu","email":"ajay@example.com","role":"admin","exp":9999999999}
     const fakePayload = {
       id: 1,
       username: "ajay_vishnu",
       email: "ajay@example.com",
       role: "admin",
-      exp: Math.floor(Date.now() / 1000) + 3600 // expires in 1 hour
+      exp: Math.floor(Date.now() / 1000) + 3600
     };
     
-    // Base64 encode the string JSON payload
-    const base64Payload = window.btoa(unescape(encodeURIComponent(JSON.stringify(fakePayload))));
+    const base64Payload = window.btoa(
+      Array.from(new TextEncoder().encode(JSON.stringify(fakePayload)), (byte) => String.fromCharCode(byte)).join("")
+    );
     const fakeToken = `header.${base64Payload}.signature`;
     
     localStorage.setItem("token", fakeToken);
@@ -64,7 +62,9 @@ describe("Dashboard Page", () => {
       exp: Math.floor(Date.now() / 1000) + 3600
     };
     
-    const base64Payload = window.btoa(unescape(encodeURIComponent(JSON.stringify(fakePayload))));
+    const base64Payload = window.btoa(
+      Array.from(new TextEncoder().encode(JSON.stringify(fakePayload)), (byte) => String.fromCharCode(byte)).join("")
+    );
     const fakeToken = `header.${base64Payload}.signature`;
     
     localStorage.setItem("token", fakeToken);
