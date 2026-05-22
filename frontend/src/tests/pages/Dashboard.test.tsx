@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import Dashboard from "../../pages/Dashboard";
+import Dashboard from "../../pages/dashboard/Dashboard";
 import "@testing-library/jest-dom";
 
 const mockNavigate = jest.fn();
@@ -30,7 +30,7 @@ describe("Dashboard Page", () => {
       </MemoryRouter>
     );
 
-    expect(mockNavigate).toHaveBeenCalledWith("/");
+    expect(mockNavigate).toHaveBeenCalledWith("/login");
   });
 
   test("renders user data from API successfully", async () => {
@@ -99,7 +99,7 @@ describe("Dashboard Page", () => {
     fireEvent.click(logoutButton);
 
     expect(localStorage.getItem("token")).toBeNull();
-    expect(mockNavigate).toHaveBeenCalledWith("/");
+    expect(mockNavigate).toHaveBeenCalledWith("/login");
   });
 
   test("redirects to login if API returns error", async () => {
@@ -115,7 +115,7 @@ describe("Dashboard Page", () => {
 
     await waitFor(() => {
       expect(localStorage.getItem("token")).toBeNull();
-      expect(mockNavigate).toHaveBeenCalledWith("/");
+      expect(mockNavigate).toHaveBeenCalledWith("/login");
     });
   });
 });

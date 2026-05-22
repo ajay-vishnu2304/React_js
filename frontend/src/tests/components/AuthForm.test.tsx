@@ -71,7 +71,7 @@ describe("AuthForm Component", () => {
     const mockToken = "fake-jwt-token";
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ token: mockToken, message: "Login successful" }),
+      json: async () => ({ token: mockToken, message: "Login successful!" }),
     });
 
     render(
@@ -102,7 +102,7 @@ describe("AuthForm Component", () => {
     });
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
+      expect(mockNavigate).toHaveBeenCalledWith("/");
     }, { timeout: 2000 });
   });
 

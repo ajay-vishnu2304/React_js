@@ -1,0 +1,118 @@
+.recent-orders-container {
+  background-color: white;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-top: 24px;
+}
+
+@media (max-width: 1024px) {
+  .recent-orders-table th:nth-child(5),
+  .recent-orders-table td:nth-child(5) {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .recent-orders-table th:nth-child(3),
+  .recent-orders-table td:nth-child(3),
+  .recent-orders-table th:nth-child(4),
+  .recent-orders-table td:nth-child(4) {
+    display: none;
+  }
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.table-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.view-all-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2563eb;
+  background-color: #eff6ff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.view-all-btn:hover {
+  background-color: #dbeafe;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.recent-orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+.recent-orders-table th {
+  padding: 12px 16px;
+  font-weight: 600;
+  color: #4b5563;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
+.recent-orders-table td {
+  padding: 16px;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.recent-orders-table tr:last-child td {
+  border-bottom: none;
+}
+
+.order-id {
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.status-badge.completed {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.pending {
+  background-color: #fef9c3;
+  color: #a16207;
+}
+
+.status-badge.shipped {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.status-badge.cancelled {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}

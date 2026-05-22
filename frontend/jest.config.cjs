@@ -2,7 +2,6 @@ const { createDefaultPreset } = require("ts-jest");
 
 const tsJestTransformCfg = createDefaultPreset().transform;
 
-/** @type {import("jest").Config} **/
 module.exports = {
   testEnvironment: "jsdom",
   roots: ["<rootDir>/src"],
@@ -21,4 +20,12 @@ module.exports = {
       tsconfig: "tsconfig.test.json",
     }],
   },
+  coverageDirectory: "<rootDir>/coverage",
+  coverageReporters: ["lcov", "text", "text-summary"],
+  collectCoverageFrom: [
+    "src/**/*.{ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/main.tsx",
+    "!src/vite-env.d.ts"
+  ],
 };

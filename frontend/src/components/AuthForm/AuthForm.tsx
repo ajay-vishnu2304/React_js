@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { loginUser, registerUser } from "../../services/apiService";
 import "./AuthForm.css";
 
 type AuthFormProps = {
@@ -62,53 +63,36 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
 
     setLoading(true);
 
-    try {
-      const url = isSignup
-        ? "http://localhost:3000/auth/register"
-        : "http://localhost:3000/auth/login";
+      try {
+        const data = isSignup
+          ? await registerUser({
+              username: formData.username.trim(),
+              email: formData.email.trim(),
+              first_name: formData.first_name.trim(),
+              last_name: formData.last_name.trim() || undefined,
+              dob: formData.dob,
+              phone: formData.phone.trim(),
+              password: formData.password,
+            })
+          : await loginUser({
+              email: formData.email.trim(),
+              password: formData.password,
+            });
 
-      const payload = isSignup
-        ? {
-            username: formData.username.trim(),
-            email: formData.email.trim(),
-            first_name: formData.first_name.trim(),
-            last_name: formData.last_name.trim() || undefined,
-            dob: formData.dob,
-            phone: formData.phone.trim(),
-            password: formData.password,
+        if (isSignup) {
+          setSuccess("Registration successful! Redirecting...");
+          navigate("/", { replace: true });
+        } else {
+          setSuccess("Login successful!");
+          localStorage.setItem("token", data.token);
+          
+          if (formData.email.trim() === "admin@example.com") {
+            navigate("/admin", { replace: true });
+          } else {
+            navigate("/", { replace: true });
           }
-        : {
-            email: formData.email.trim(),
-            password: formData.password,
-          };
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || data.message || "An error occurred");
-      }
-
-      if (isSignup) {
-        setSuccess("Registration successful! Redirecting...");
-        setTimeout(() => {
-          navigate("/");
-        }, 2000);
-      } else {
-        setSuccess("Login successful!");
-        localStorage.setItem("token", data.token);
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 1500);
-      }
-    } catch (err: unknown) {
+        }
+      } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
       setError(message);
     } finally {
@@ -224,7 +208,7 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
         <p className="auth-footer">
           {isSignup ? (
             <>
-              Already have an account? <Link to="/">Login</Link>
+              Already have an account? <Link to="/login">Login</Link>
             </>
           ) : (
             <>

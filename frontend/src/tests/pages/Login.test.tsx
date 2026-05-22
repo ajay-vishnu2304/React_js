@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import Login from "../../pages/Login";
+import Login from "../../pages/auth/Login";
 import "@testing-library/jest-dom";
 
 describe("Login Page", () => {
