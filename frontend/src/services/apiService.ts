@@ -1,6 +1,4 @@
-const API_BASE_URL =
-  (import.meta as unknown as { env: { VITE_API_URL?: string } }).env
-    ?.VITE_API_URL ?? "";
+import { API_BASE_URL } from "../config/api";
 
 export interface AuthResponse {
   token: string;
@@ -41,9 +39,9 @@ export const getDashboardData = async <T>(token: string): Promise<T> => {
   return handleResponse<T>(response);
 };
 
-
-
-export const getAdminDashboardData = async (token: string): Promise<unknown> => {
+export const getAdminDashboardData = async (
+  token: string,
+): Promise<unknown> => {
   const response = await fetch(`${API_BASE_URL}/admin/dashboard`, {
     method: "GET",
     headers: {
@@ -54,7 +52,16 @@ export const getAdminDashboardData = async (token: string): Promise<unknown> => 
   return handleResponse<unknown>(response);
 };
 
-export const getOrders = async (token: string): Promise<unknown[]> => {
+export interface Order {
+  id: number;
+  user_id: number;
+  total_amount: number;
+  order_status: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export const getOrders = async (token: string): Promise<Order[]> => {
   const response = await fetch(`${API_BASE_URL}/orders`, {
     method: "GET",
     headers: {
@@ -62,13 +69,13 @@ export const getOrders = async (token: string): Promise<unknown[]> => {
       Authorization: `Bearer ${token}`,
     },
   });
-  return handleResponse<unknown[]>(response);
+  return handleResponse<Order[]>(response);
 };
 
 export const updateOrderStatus = async (
   token: string,
   orderId: number,
-  newStatus: string
+  newStatus: string,
 ): Promise<unknown> => {
   const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
     method: "PATCH",
@@ -84,7 +91,10 @@ export const updateOrderStatus = async (
 export const getCategories = async (token: string): Promise<unknown[]> => {
   const response = await fetch(`${API_BASE_URL}/categories`, {
     method: "GET",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
   });
   return handleResponse<unknown[]>(response);
 };
@@ -92,7 +102,10 @@ export const getCategories = async (token: string): Promise<unknown[]> => {
 export const getCarts = async (token: string): Promise<unknown[]> => {
   const response = await fetch(`${API_BASE_URL}/carts`, {
     method: "GET",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
   });
   return handleResponse<unknown[]>(response);
 };
@@ -100,7 +113,10 @@ export const getCarts = async (token: string): Promise<unknown[]> => {
 export const getCoupons = async (token: string): Promise<unknown[]> => {
   const response = await fetch(`${API_BASE_URL}/coupons`, {
     method: "GET",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
   });
   return handleResponse<unknown[]>(response);
 };
@@ -108,15 +124,23 @@ export const getCoupons = async (token: string): Promise<unknown[]> => {
 export const getPayments = async (token: string): Promise<unknown[]> => {
   const response = await fetch(`${API_BASE_URL}/payments`, {
     method: "GET",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
   });
   return handleResponse<unknown[]>(response);
 };
 
-export const getProductCategories = async (token: string): Promise<unknown[]> => {
+export const getProductCategories = async (
+  token: string,
+): Promise<unknown[]> => {
   const response = await fetch(`${API_BASE_URL}/product-categories`, {
     method: "GET",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
   });
   return handleResponse<unknown[]>(response);
 };
@@ -124,7 +148,10 @@ export const getProductCategories = async (token: string): Promise<unknown[]> =>
 export const getReviews = async (token: string): Promise<unknown[]> => {
   const response = await fetch(`${API_BASE_URL}/reviews`, {
     method: "GET",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
   });
   return handleResponse<unknown[]>(response);
 };
@@ -132,7 +159,10 @@ export const getReviews = async (token: string): Promise<unknown[]> => {
 export const getProductImages = async (token: string): Promise<unknown[]> => {
   const response = await fetch(`${API_BASE_URL}/product-images`, {
     method: "GET",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
   });
   return handleResponse<unknown[]>(response);
 };
@@ -146,19 +176,25 @@ export interface ProductImage {
 
 export const getProductImagesByProductId = async (
   token: string,
-  productId: number
+  productId: number,
 ): Promise<ProductImage[]> => {
-  const response = await fetch(`${API_BASE_URL}/product-images?product_id=${productId}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/product-images?product_id=${productId}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
   return handleResponse<ProductImage[]>(response);
 };
 
 export const addProductImage = async (
   token: string,
   productId: number,
-  imageUrl: string
+  imageUrl: string,
 ): Promise<unknown> => {
   const response = await fetch(`${API_BASE_URL}/product-images`, {
     method: "POST",
@@ -171,7 +207,10 @@ export const addProductImage = async (
   return handleResponse<unknown>(response);
 };
 
-export const deleteProductImage = async (token: string, imageId: number): Promise<unknown> => {
+export const deleteProductImage = async (
+  token: string,
+  imageId: number,
+): Promise<unknown> => {
   const response = await fetch(`${API_BASE_URL}/product-images/${imageId}`, {
     method: "DELETE",
     headers: {
@@ -182,14 +221,20 @@ export const deleteProductImage = async (token: string, imageId: number): Promis
   return handleResponse<unknown>(response);
 };
 
-export const deleteAllProductImages = async (token: string, productId: number): Promise<unknown> => {
-  const response = await fetch(`${API_BASE_URL}/product-images/product/${productId}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+export const deleteAllProductImages = async (
+  token: string,
+  productId: number,
+): Promise<unknown> => {
+  const response = await fetch(
+    `${API_BASE_URL}/product-images/product/${productId}`,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
     },
-  });
+  );
   return handleResponse<unknown>(response);
 };
 
@@ -221,7 +266,7 @@ export const getProducts = async (token?: string): Promise<Product[]> => {
   return handleResponse<Product[]>(response);
 };
 
-  export interface BackendUser {
+export interface BackendUser {
   id: number;
   username: string;
   email: string;
@@ -231,6 +276,17 @@ export const getProducts = async (token?: string): Promise<Product[]> => {
   phone: string;
   role?: string;
 }
+
+export const getAllOrders = async (token: string): Promise<Order[]> => {
+  const response = await fetch(`${API_BASE_URL}/orders/all`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return handleResponse<Order[]>(response);
+};
 
 export const getUsers = async (token: string): Promise<BackendUser[]> => {
   const response = await fetch(`${API_BASE_URL}/user`, {
@@ -246,7 +302,7 @@ export const getUsers = async (token: string): Promise<BackendUser[]> => {
 export const updateUserRole = async (
   token: string,
   userId: number,
-  role: string
+  role: string,
 ): Promise<unknown> => {
   const response = await fetch(`${API_BASE_URL}/user/${userId}`, {
     method: "PATCH",
@@ -259,7 +315,10 @@ export const updateUserRole = async (
   return handleResponse<unknown>(response);
 };
 
-export const deleteUser = async (token: string, id: number): Promise<unknown> => {
+export const deleteUser = async (
+  token: string,
+  id: number,
+): Promise<unknown> => {
   const response = await fetch(`${API_BASE_URL}/user/${id}`, {
     method: "DELETE",
     headers: {
@@ -270,42 +329,61 @@ export const deleteUser = async (token: string, id: number): Promise<unknown> =>
   return handleResponse<unknown>(response);
 };
 
-export const searchProducts = async (token: string, query: string): Promise<Product[]> => {
-  const response = await fetch(`${API_BASE_URL}/products/search?q=${encodeURIComponent(query)}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+export const searchProducts = async (
+  token: string,
+  query: string,
+): Promise<Product[]> => {
+  const response = await fetch(
+    `${API_BASE_URL}/products/search?q=${encodeURIComponent(query)}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
     },
-  });
+  );
   return handleResponse<Product[]>(response);
 };
 
-export const getProductsByBrand = async (token: string, brand: string): Promise<Product[]> => {
-  const response = await fetch(`${API_BASE_URL}/products/brand?brand=${encodeURIComponent(brand)}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+export const getProductsByBrand = async (
+  token: string,
+  brand: string,
+): Promise<Product[]> => {
+  const response = await fetch(
+    `${API_BASE_URL}/products/brand?brand=${encodeURIComponent(brand)}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
     },
-  });
+  );
   return handleResponse<Product[]>(response);
 };
 
-export const getProductsByPriceRange = async (token: string, min: number, max: number): Promise<Product[]> => {
-  const response = await fetch(`${API_BASE_URL}/products/price-range?min=${min}&max=${max}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+export const getProductsByPriceRange = async (
+  token: string,
+  min: number,
+  max: number,
+): Promise<Product[]> => {
+  const response = await fetch(
+    `${API_BASE_URL}/products/price-range?min=${min}&max=${max}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
     },
-  });
+  );
   return handleResponse<Product[]>(response);
 };
 
 export const createProduct = async (
   token: string,
-  product: Omit<Product, "id" | "created_at" | "updated_at">
+  product: Omit<Product, "id" | "created_at" | "updated_at">,
 ): Promise<unknown> => {
   const response = await fetch(`${API_BASE_URL}/products`, {
     method: "POST",
@@ -321,7 +399,7 @@ export const createProduct = async (
 export const updateProduct = async (
   token: string,
   id: number,
-  updates: Partial<Product>
+  updates: Partial<Product>,
 ): Promise<unknown> => {
   const response = await fetch(`${API_BASE_URL}/products/${id}`, {
     method: "PATCH",
@@ -337,7 +415,7 @@ export const updateProduct = async (
 export const updateProductStock = async (
   token: string,
   id: number,
-  stock: number
+  stock: number,
 ): Promise<unknown> => {
   const response = await fetch(`${API_BASE_URL}/products/${id}/stock`, {
     method: "PATCH",
@@ -350,7 +428,10 @@ export const updateProductStock = async (
   return handleResponse<unknown>(response);
 };
 
-export const deleteProduct = async (token: string, id: number): Promise<unknown> => {
+export const deleteProduct = async (
+  token: string,
+  id: number,
+): Promise<unknown> => {
   const response = await fetch(`${API_BASE_URL}/products/${id}`, {
     method: "DELETE",
     headers: {
@@ -361,7 +442,6 @@ export const deleteProduct = async (token: string, id: number): Promise<unknown>
   return handleResponse<unknown>(response);
 };
 
-
 interface ApiResponse {
   error?: string;
   message?: string;
@@ -370,20 +450,28 @@ interface ApiResponse {
 const handleResponse = async <T>(response: Response): Promise<T> => {
   let data: (T & ApiResponse) | null = null;
   // eslint-disable-next-line no-useless-assignment
-  let responseText = '';
+  let responseText = "";
 
   try {
     responseText = await response.text();
-    
+
     if (responseText) {
       try {
         data = JSON.parse(responseText) as T & ApiResponse;
       } catch {
-        if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-          console.error("Received HTML error response instead of JSON:", responseText.substring(0, 200));
+        if (
+          responseText.includes("<!DOCTYPE") ||
+          responseText.includes("<html")
+        ) {
+          console.error(
+            "Received HTML error response instead of JSON:",
+            responseText.substring(0, 200),
+          );
           data = {
             error: `Server returned HTML error page (HTTP ${response.status})`,
-            message: responseText.substring(0, 200) + (responseText.length > 200 ? '...' : '')
+            message:
+              responseText.substring(0, 200) +
+              (responseText.length > 200 ? "..." : ""),
           } as T & ApiResponse;
         } else {
           data = { message: responseText } as T & ApiResponse;

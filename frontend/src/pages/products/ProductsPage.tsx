@@ -10,6 +10,7 @@ import {
   addProductImage,
   deleteAllProductImages,
 } from "../../services/apiService";
+import { hasAnyRole } from "../../services/jwtUtils";
 import StatsCard from "../../components/StatsCard/StatsCard";
 import "./ProductsPage.css";
 
@@ -42,6 +43,7 @@ export default function ProductsPage() {
   });
 
   const token = localStorage.getItem("token") || "";
+  const canManageProducts = token ? hasAnyRole(token, ["admin", "product_manager"]) : false;
 
   const fetchProductsList = useCallback(async () => {
     setLoading(true);
@@ -49,7 +51,6 @@ export default function ProductsPage() {
       const data = await getProducts(token);
       setProducts(data);
 
-      // Load images for preview in the table (using per-product endpoint for reliability)
       try {
         const map: Record<number, string> = {};
         await Promise.all(
@@ -60,7 +61,7 @@ export default function ProductsPage() {
                 map[product.id] = imgs[0].image_url;
               }
             } catch {
-              /* ignore image fetch error for this product */
+              void 0;
             }
           })
         );
@@ -72,8 +73,8 @@ export default function ProductsPage() {
       }
 
       setError(null);
-    } catch (err: any) {
-      setError(err.message || "Failed to load products.");
+    } catch (err: unknown) {
+      setError((err as Error).message || "Failed to load products.");
     } finally {
       setLoading(false);
     }
@@ -104,7 +105,6 @@ export default function ProductsPage() {
     setModalMode("edit");
     setSelectedProduct(product);
 
-    // Set basic fields first (so modal opens quickly)
     const baseForm = {
       name: product.name,
       description: product.description || "",
@@ -117,7 +117,6 @@ export default function ProductsPage() {
     };
     setFormData(baseForm);
 
-    // Now try to load the existing image (this was the missing part)
     try {
       const images = await getProductImagesByProductId(token, product.id);
       console.log("Edit modal - raw response from getProductImagesByProductId:", images);
@@ -125,13 +124,11 @@ export default function ProductsPage() {
       let imageUrl = "";
 
       if (Array.isArray(images) && images.length > 0) {
-        const first = images[0];
-        // handle common possible field names from backend
-        imageUrl = first.image_url || first.url || first.path || first.src || "";
+        const first = images[0] as unknown as Record<string, unknown>;
+        imageUrl = (first.image_url as string) || (first.url as string) || (first.path as string) || (first.src as string) || "";
       } else if (images && typeof images === "object") {
-        // in case backend returns a single object instead of array
-        const obj = images as any;
-        imageUrl = obj.image_url || obj.url || obj.path || obj.src || "";
+        const obj = images as unknown as Record<string, unknown>;
+        imageUrl = (obj.image_url as string) || (obj.url as string) || (obj.path as string) || (obj.src as string) || "";
       }
 
       if (imageUrl) {
@@ -161,12 +158,12 @@ export default function ProductsPage() {
     const priceNum = parseFloat(formData.price);
     const stockNum = parseInt(formData.stock_no, 10);
 
-    if (isNaN(priceNum) || priceNum < 0) {
-      alert("Please enter a valid non-negative price.");
+    if (isNaN(priceNum) || priceNum <= 0) {
+      alert("Please enter a valid positive price.");
       return;
     }
-    if (isNaN(stockNum) || stockNum < 0) {
-      alert("Please enter a valid non-negative stock quantity.");
+    if (isNaN(stockNum) || stockNum < 0 || !Number.isInteger(stockNum)) {
+      alert("Please enter a valid non-negative integer stock quantity.");
       return;
     }
 
@@ -182,8 +179,9 @@ export default function ProductsPage() {
 
     try {
       if (modalMode === "add") {
-        const created: any = await createProduct(token, payload);
-        const newProductId = created?.id ?? created?.data?.id ?? null;
+        const created: unknown = await createProduct(token, payload);
+        const createdObj = created as Record<string, unknown>;
+        const newProductId = (createdObj.id as number) ?? (createdObj.data as Record<string, unknown>)?.id ?? null;
 
         alert("Product added successfully!");
 
@@ -197,7 +195,6 @@ export default function ProductsPage() {
       } else if (modalMode === "edit" && selectedProduct) {
         await updateProduct(token, selectedProduct.id, payload);
 
-        // Replace image (single image per product)
         try {
           await deleteAllProductImages(token, selectedProduct.id);
           if (formData.image_url) {
@@ -212,19 +209,23 @@ export default function ProductsPage() {
 
       setIsModalOpen(false);
       fetchProductsList();
-    } catch (err: any) {
-      alert(err.message || "Failed to save product.");
+    } catch (err: unknown) {
+      alert((err as Error).message || "Failed to save product.");
     }
   };
 
-  const handleDeleteClick = async (id: number, name: string) => {
+  const handleDeleteClick = async (id: number, name: string, stock: number) => {
+    if (stock > 0) {
+      alert("Cannot delete product with stock > 0");
+      return;
+    }
     if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
       try {
         await deleteProduct(token, id);
         alert("Product deleted successfully!");
         fetchProductsList();
-      } catch (err: any) {
-        alert(err.message || "Failed to delete product.");
+      } catch (err: unknown) {
+        alert((err as Error).message || "Failed to delete product.");
       }
     }
   };
@@ -235,16 +236,16 @@ export default function ProductsPage() {
   };
 
   const handleSaveStockEdit = async (id: number) => {
-    if (tempStockValue < 0 || isNaN(tempStockValue)) {
-      alert("Stock cannot be negative.");
+    if (tempStockValue < 0 || isNaN(tempStockValue) || !Number.isInteger(tempStockValue)) {
+      alert("Stock must be a non-negative integer.");
       return;
     }
     try {
       await updateProductStock(token, id, tempStockValue);
       setEditingStockId(null);
       fetchProductsList();
-    } catch (err: any) {
-      alert(err.message || "Failed to update stock.");
+    } catch (err: unknown) {
+      alert((err as Error).message || "Failed to update stock.");
     }
   };
 
@@ -299,9 +300,11 @@ export default function ProductsPage() {
     <div className="products-page">
       <div className="page-header">
         <h1>Products Management</h1>
-        <button className="add-product-btn" onClick={handleOpenAddModal}>
-          + Add Product
-        </button>
+        {canManageProducts && (
+          <button className="add-product-btn" onClick={handleOpenAddModal}>
+            + Add Product
+          </button>
+        )}
       </div>
 
       <div className="stats-grid">
@@ -479,20 +482,24 @@ export default function ProductsPage() {
                    </td>
 
                    <td className="actions-cell">
-                    <button
-                      className="action-btn edit-btn"
-                      onClick={() => handleOpenEditModal(product)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="action-btn delete-btn"
-                      onClick={() =>
-                        handleDeleteClick(product.id, product.name)
-                      }
-                    >
-                      Delete
-                    </button>
+                    {canManageProducts && (
+                      <>
+                        <button
+                          className="action-btn edit-btn"
+                          onClick={() => handleOpenEditModal(product)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="action-btn delete-btn"
+                          onClick={() =>
+                            handleDeleteClick(product.id, product.name, product.stock_no)
+                          }
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

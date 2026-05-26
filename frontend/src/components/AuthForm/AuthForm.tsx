@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser, registerUser } from "../../services/apiService";
+import { getHomePathForRole, getUserRole } from "../../services/jwtUtils";
 import "./AuthForm.css";
 
 type AuthFormProps = {
@@ -85,12 +86,7 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
         } else {
           setSuccess("Login successful!");
           localStorage.setItem("token", data.token);
-          
-          if (formData.email.trim() === "admin@example.com") {
-            navigate("/admin", { replace: true });
-          } else {
-            navigate("/", { replace: true });
-          }
+          navigate(getHomePathForRole(getUserRole(data.token)), { replace: true });
         }
       } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong.";

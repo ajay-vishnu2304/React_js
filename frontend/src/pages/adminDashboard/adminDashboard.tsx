@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import Sidebar from "../../components/SideBar/SideBar";
 import NavBar from "../../components/NavBar/NavBar";
 import "./adminDashboard.css";
@@ -9,23 +9,34 @@ import UsersPage from "../users/UsersPage";
 import OrdersPage from "../orders/OrdersPage";
 import ProductsPage from "../products/ProductsPage";
 import { getAdminDashboardData } from "../../services/apiService";
+import { hasRole } from "../../services/jwtUtils";
 
 export interface AdminDashboardData {
-  users: any[];
-  products: any[];
-  orders: any[];
-  categories: any[];
-  carts: any[];
-  coupons: any[];
-  payments: any[];
-  productCategories: any[];
-  reviews: any[];
-  productImages: any[];
+  users: unknown[];
+  products: unknown[];
+  orders: unknown[];
+  categories: unknown[];
+  carts: unknown[];
+  coupons: unknown[];
+  payments: unknown[];
+  productCategories: unknown[];
+  reviews: unknown[];
+  productImages: unknown[];
 }
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
+  const token = localStorage.getItem("token");
+  const isAdmin = token ? hasRole(token, "admin") : false;
+
+  useEffect(() => {
+    if (!token || !isAdmin) {
+      navigate("/login");
+      return;
+    }
+  }, [token, isAdmin, navigate]);
 
   const rawTab = searchParams.get("tab");
   const activeTab =
@@ -45,8 +56,7 @@ export default function AdminDashboard() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const fetchData = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!token || !isAdmin) {
       setError("Unauthorized");
       setLoading(false);
       return;
@@ -54,7 +64,7 @@ export default function AdminDashboard() {
     try {
       const data = await getAdminDashboardData(token);
       console.log("Dashboard API Response:", data);
-      setDashboardData(data);
+      setDashboardData(data as AdminDashboardData);
     } catch (err) {
       console.error("Dashboard data fetch error:", err);
       setError(
@@ -82,8 +92,8 @@ export default function AdminDashboard() {
     if (!dashboardData) return null;
 
     const orders = dashboardData.orders || [];
-    const totalRevenue = orders.reduce((sum, order: any) => {
-      const amount = parseFloat(order.total_amount) || 0;
+    const totalRevenue = orders.reduce((sum: number, order: unknown) => {
+      const amount = parseFloat((order as Record<string, unknown>).total_amount as string) || 0;
       return sum + amount;
     }, 0);
     return {
@@ -151,8 +161,8 @@ export default function AdminDashboard() {
               </div>
             )}
             <RecentOrders
-              orders={dashboardData.orders || []}
-              users={dashboardData.users || []}
+              orders={dashboardData.orders as Array<{id: number, user_id: number, total_amount: number, order_status: string, created_at: string}> || []}
+              users={dashboardData.users as Array<Record<string, unknown>> || []}
             />
           </>
         );
@@ -167,7 +177,7 @@ export default function AdminDashboard() {
         activeTab={activeTab}
         onTabChange={(tab) => {
           if (tab === "Dashboard") {
-            setSearchParams({}); // clean URL = main admin dashboard
+            setSearchParams({});
           } else {
             setSearchParams({ tab: tab.toLowerCase() });
           }

@@ -10,18 +10,18 @@ interface Order {
 
 interface RecentOrdersProps {
   orders: Order[];
-  users?: any[];
+  users?: Array<Record<string, unknown>>;
 }
 
 export default function RecentOrders({ orders, users }: RecentOrdersProps) {
   const recentOrders = orders ? orders.slice(0, 5) : [];
 
-  const getCustomerName = (userId: number) => {
+  const getCustomerName = (userId: number): string => {
     if (!users || users.length === 0) return `User #${userId}`;
-    const user = users.find((u: any) => u.id === userId);
+    const user = users.find((u) => (u as Record<string, unknown>).id === userId);
     if (!user) return `User #${userId}`;
     const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
-    return fullName || user.username || `User #${userId}`;
+    return fullName || (user.username as string) || `User #${userId}`;
   };
   return (
     <div className="recent-orders-container">

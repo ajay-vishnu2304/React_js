@@ -1,15 +1,26 @@
-import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import Sidebar from "../../components/SideBar/SideBar";
 import NavBar from "../../components/NavBar/NavBar";
 import "./ProductManagerDashboard.css";
 import StatsCard from "../../components/StatsCard/StatsCard";
 import RecentOrders from "../../components/Tables/RecentOrders";
 import ProductsPage from "../products/ProductsPage";
+import { hasAnyRole } from "../../services/jwtUtils";
 
 export default function ProductManagerDashboard() {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
+  const token = localStorage.getItem("token");
+  const hasAccess = token ? hasAnyRole(token, ["admin", "product_manager"]) : false;
+
+  useEffect(() => {
+    if (!token || !hasAccess) {
+      navigate("/login");
+      return;
+    }
+  }, [token, hasAccess, navigate]);
 
   const rawTab = searchParams.get("tab");
   const activeTab =
@@ -73,7 +84,7 @@ export default function ProductManagerDashboard() {
                 percentage="58% of total sales"
               />
             </div>
-            <RecentOrders />
+            <RecentOrders orders={[]} />
           </>
         );
     }
@@ -87,7 +98,7 @@ export default function ProductManagerDashboard() {
         activeTab={activeTab}
         onTabChange={(tab) => {
           if (tab === "Dashboard") {
-            setSearchParams({}); // clean URL = main dashboard view
+            setSearchParams({});
           } else {
             setSearchParams({ tab: tab.toLowerCase() });
           }
@@ -102,4 +113,4 @@ export default function ProductManagerDashboard() {
       </div>
     </div>
   );
-}
+}

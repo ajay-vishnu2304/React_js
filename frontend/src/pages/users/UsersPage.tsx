@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import "./UsersPage.css";
 import { getUsers, updateUserRole, deleteUser } from "../../services/apiService";
+import { hasRole } from "../../services/jwtUtils";
 
 interface User {
   id: string;
@@ -14,24 +15,25 @@ interface User {
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
-
-useEffect(() => {
   const token = localStorage.getItem("token");
-  if (token) {
-    getUsers(token)
-      .then((data) => {
-        const mapped = data.map((u) => ({
-          id: `#${String(u.id).padStart(3, "0")}`,
-          name: `${u.first_name} ${u.last_name ?? ""}`.trim(),
-          email: u.email,
-          role: (u.role as "user" | "admin" | "product_manager") ?? "user",
-          joinDate: u.dob,
-        }));
-        setUsers(mapped);
-      })
-      .catch((err) => console.error("Failed to fetch users", err));
-  }
-}, []);
+  const isAdmin = token ? hasRole(token, "admin") : false;
+
+  useEffect(() => {
+    if (token) {
+      getUsers(token)
+        .then((data) => {
+          const mapped = data.map((u) => ({
+            id: `#${String(u.id).padStart(3, "0")}`,
+            name: `${u.first_name} ${u.last_name ?? ""}`.trim(),
+            email: u.email,
+            role: (u.role as "user" | "admin" | "product_manager") ?? "user",
+            joinDate: u.dob,
+          }));
+          setUsers(mapped);
+        })
+        .catch((err) => console.error("Failed to fetch users", err));
+    }
+  }, [token]);
   const [selectedRole, setSelectedRole] = useState<string>("all");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,8 +44,10 @@ useEffect(() => {
   });
 
   const handleRoleChange = async (userId: string, newRole: "user" | "admin" | "product_manager") => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || !isAdmin) {
+      alert("Admin access required");
+      return;
+    }
 
     const numericId = parseInt(userId.replace("#", ""), 10);
 
@@ -64,8 +68,10 @@ useEffect(() => {
   };
 
   const handleDeleteUser = async (userId: string, userName: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || !isAdmin) {
+      alert("Admin access required");
+      return;
+    }
 
     if (!window.confirm(`Are you sure you want to delete user "${userName}"?`)) {
       return;
@@ -157,7 +163,7 @@ useEffect(() => {
             <option value="admin">Admin</option>
             <option value="product_manager">Product Manager</option>
           </select>
-          <button className="add-user-btn" onClick={handleOpenModal}>Add User</button>
+          {isAdmin && <button className="add-user-btn" onClick={handleOpenModal}>Add User</button>}
         </div>
       </div>
 
@@ -187,21 +193,29 @@ useEffect(() => {
                   </td>
                   <td>{user.joinDate}</td>
                   <td className="actions-cell">
-                    <select 
-                      className="role-dropdown"
-                      value={user.role}
-                      onChange={(e) => handleRoleChange(user.id, e.target.value as "user" | "admin" | "product_manager")}
-                    >
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
-                      <option value="product_manager">Product Manager</option>
-                    </select>
-                    <button 
-                      className="delete-user-btn"
-                      onClick={() => handleDeleteUser(user.id, user.name)}
-                    >
-                      Delete
-                    </button>
+                    {isAdmin ? (
+                      <>
+                        <select 
+                          className="role-dropdown"
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value as "user" | "admin" | "product_manager")}
+                        >
+                          <option value="user">User</option>
+                          <option value="admin">Admin</option>
+                          <option value="product_manager">Product Manager</option>
+                        </select>
+                        <button 
+                          className="delete-user-btn"
+                          onClick={() => handleDeleteUser(user.id, user.name)}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : (
+                      <span className={`role-badge ${getRoleBadgeClass(user.role)}`}>
+                        {getRoleDisplayName(user.role)}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))

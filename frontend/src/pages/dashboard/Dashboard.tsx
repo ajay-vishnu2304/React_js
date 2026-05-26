@@ -18,7 +18,6 @@ export default function UserDashboard() {
         const data = await getProducts(token);
         setProducts(data);
 
-        // Try to load real product images (works if user is logged in)
         if (token) {
           try {
             const map: Record<number, string> = {};
@@ -30,7 +29,7 @@ export default function UserDashboard() {
                     map[product.id] = imgs[0].image_url;
                   }
                 } catch {
-                  /* ignore per-product image error */
+                  void 0;
                 }
               })
             );

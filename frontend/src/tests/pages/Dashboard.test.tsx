@@ -1,52 +1,33 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Dashboard from "../../pages/dashboard/Dashboard";
 import "@testing-library/jest-dom";
 
-const mockNavigate = jest.fn();
-jest.mock("react-router-dom", () => ({
-  ...jest.requireActual("react-router-dom"),
-  useNavigate: () => mockNavigate,
-}));
-
 describe("Dashboard Page", () => {
   let consoleSpy: jest.SpyInstance;
+  let consoleLogSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
     globalThis.fetch = jest.fn();
     consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    consoleLogSpy.mockRestore();
   });
 
-  test("redirects to login if no token is present", () => {
-    render(
-      <MemoryRouter>
-        <Dashboard />
-      </MemoryRouter>
-    );
-
-    expect(mockNavigate).toHaveBeenCalledWith("/login");
-  });
-
-  test("renders user data from API successfully", async () => {
-    const fakeUser = {
-      id: 1,
-      username: "ajay_vishnu",
-      email: "ajay@example.com",
-      role: "admin"
-    };
-
+  test("shows loading state initially", () => {
+    localStorage.setItem("token", "fake-token");
     (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => fakeUser,
+      status: 200,
+      statusText: 'OK',
+      text: async () => JSON.stringify([]),
     });
-    
-    localStorage.setItem("token", "fake-token");
 
     render(
       <MemoryRouter>
@@ -54,58 +35,36 @@ describe("Dashboard Page", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByText("Loading products...")).toBeInTheDocument();
+  });
 
-    const welcomeMsg = await screen.findByText(/Welcome back,/i);
-    expect(welcomeMsg).toBeInTheDocument();
-    expect(screen.getAllByText("ajay_vishnu").length).toBeGreaterThan(0);
-    expect(screen.getByText("ajay@example.com")).toBeInTheDocument();
-    expect(screen.getByText("admin")).toBeInTheDocument();
+  test("renders products from API successfully", async () => {
+    const fakeProducts = [
+      { id: 1, name: "Product 1", price: 100, stock_no: 10 },
+      { id: 2, name: "Product 2", price: 200, stock_no: 5 },
+    ];
 
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      "http://localhost:3000/auth/dashboard",
-      expect.objectContaining({
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer fake-token",
-        },
+    (globalThis.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: async () => JSON.stringify(fakeProducts),
       })
-    );
-  });
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: async () => JSON.stringify([]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: async () => JSON.stringify([]),
+      });
 
-  test("clears token and redirects on logout click", async () => {
-    const fakeUser = {
-      id: 1,
-      username: "ajay_vishnu",
-      email: "ajay@example.com",
-      role: "admin"
-    };
-
-    (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => fakeUser,
-    });
-    
     localStorage.setItem("token", "fake-token");
-
-    render(
-      <MemoryRouter>
-        <Dashboard />
-      </MemoryRouter>
-    );
-
-    const logoutButton = await screen.findByRole("button", { name: "Logout" });
-    fireEvent.click(logoutButton);
-
-    expect(localStorage.getItem("token")).toBeNull();
-    expect(mockNavigate).toHaveBeenCalledWith("/login");
-  });
-
-  test("redirects to login if API returns error", async () => {
-    (globalThis.fetch as jest.Mock).mockRejectedValueOnce(new Error("Network error"));
-
-    localStorage.setItem("token", "invalid-token");
 
     render(
       <MemoryRouter>
@@ -114,8 +73,73 @@ describe("Dashboard Page", () => {
     );
 
     await waitFor(() => {
-      expect(localStorage.getItem("token")).toBeNull();
-      expect(mockNavigate).toHaveBeenCalledWith("/login");
+      expect(screen.getByText("Product 1")).toBeInTheDocument();
+      expect(screen.getByText("Product 2")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("₹100")).toBeInTheDocument();
+    expect(screen.getByText("₹200")).toBeInTheDocument();
+  });
+
+  test("shows empty state when no products", async () => {
+    (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      text: async () => JSON.stringify([]),
+    });
+
+    localStorage.setItem("token", "fake-token");
+
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("No products available.")).toBeInTheDocument();
+    });
+  });
+
+  test("handles API error gracefully", async () => {
+    (globalThis.fetch as jest.Mock).mockRejectedValueOnce(new Error("Network error"));
+
+    localStorage.setItem("token", "fake-token");
+
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("No products available.")).toBeInTheDocument();
+    });
+
+    expect(consoleSpy).toHaveBeenCalled();
+  });
+
+  test("renders navbar and footer", async () => {
+    (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      text: async () => JSON.stringify([]),
+    });
+
+    localStorage.setItem("token", "fake-token");
+
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("AJVX.")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText(/All Rights Reserved/)).toBeInTheDocument();
     });
   });
 });

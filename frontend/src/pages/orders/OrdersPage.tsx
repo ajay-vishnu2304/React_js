@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./OrdersPage.css";
-import { getAdminDashboardData, updateOrderStatus } from "../../services/apiService";
+import { getAllOrders, getUsers, updateOrderStatus } from "../../services/apiService";
+import { hasRole } from "../../services/jwtUtils";
 
 interface Order {
   id: number;
@@ -19,22 +20,25 @@ interface OrdersPageProps {
 
 export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [, setUsers] = useState<any[]>([]);
+  const [, setUsers] = useState<unknown[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [loading, setLoading] = useState(true);
+  const token = localStorage.getItem("token");
+  const isAdmin = token ? hasRole(token, "admin") : false;
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem("token");
       if (!token) {
         setLoading(false);
         return;
       }
       try {
-        const data = await getAdminDashboardData(token);
-        const usersList = data.users || [];
-        setUsers(usersList);
+        const [ordersData, usersData] = await Promise.all([
+          getAllOrders(token),
+          getUsers(token)
+        ]);
+        setUsers(usersData);
 
         const normalizeStatus = (status: string) => {
           if (!status) return 'pending';
@@ -47,8 +51,8 @@ export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
           return s;
         };
 
-        const enrichedOrders: Order[] = (data.orders || []).map((order: any) => {
-          const user = usersList.find((u: any) => u.id === order.user_id);
+        const enrichedOrders: Order[] = ordersData.map((order) => {
+          const user = usersData.find((u) => u.id === order.user_id);
           const customerName = user 
             ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || `User #${order.user_id}`
             : `User #${order.user_id}`;
@@ -79,16 +83,16 @@ export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
     : orders.filter(order => order.order_status.toLowerCase() === statusFilter.toLowerCase());
 
   const handleStatusChange = async (orderId: number, newStatus: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || !isAdmin) {
+      alert("Admin access required");
+      return;
+    }
 
     setOrders(prev =>
       prev.map(order =>
         order.id === orderId ? { ...order, order_status: newStatus } : order
       )
     );
-
-    console.log("PATCH body for order", orderId, "→", { order_status: newStatus });
 
     try {
       await updateOrderStatus(token, orderId, newStatus);
@@ -209,6 +213,7 @@ export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
                   <td>₹{order.total_amount}</td>
                   <td>{new Date(order.created_at).toLocaleDateString()}</td>
                   <td>
+                    {isAdmin ? (
                     <select
                       className="status-dropdown"
                       value={order.order_status}
@@ -223,11 +228,13 @@ export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
                       ].map(({ value, label }) => (
                         <option key={value} value={value}>{label}</option>
                       ))}
-                      {/* Show current status if it's not one of the standard ones */}
                       {!['pending', 'delivered', 'shipped', 'cancelled', 'placed'].includes(order.order_status) && (
                         <option value={order.order_status}>{order.order_status}</option>
                       )}
                     </select>
+                    ) : (
+                      <span className="status-badge">{order.order_status}</span>
+                    )}
                   </td>
                 </tr>
               ))

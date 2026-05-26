@@ -1,9 +1,12 @@
 .products-page {
-  padding: 2rem;
-  max-width: 1400px;
+  padding: 1rem;
+  max-width: 100%;
   margin: 0 auto;
   font-family: Arial, Helvetica, sans-serif;
   color: #333;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .page-header {
@@ -36,12 +39,20 @@
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
   margin-bottom: 2rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-/* Filter Controls Panel */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
 .controls-panel {
   background-color: #f8f9fa;
   padding: 1.5rem;
@@ -119,7 +130,6 @@
   background-color: #5a6268;
 }
 
-/* Responsive Table layout */
 .table-responsive {
   background-color: white;
   border-radius: 6px;
@@ -177,7 +187,6 @@
   color: #111;
 }
 
-/* Stock editor styling */
 .stock-cell {
   min-width: 150px;
 }
@@ -236,7 +245,6 @@
   cursor: pointer;
 }
 
-/* Status Pill Badges */
 .status-badge {
   display: inline-block;
   padding: 0.25rem 0.6rem;
@@ -261,7 +269,6 @@
   color: #721c24;
 }
 
-/* Table message text placeholders */
 .table-message {
   padding: 3rem;
   text-align: center;
@@ -274,7 +281,6 @@
   font-weight: bold;
 }
 
-/* Actions styling */
 .actions-cell {
   white-space: nowrap;
 }
@@ -311,7 +317,6 @@
   background-color: #c82333;
 }
 
-/* CRUD Modals */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -423,9 +428,6 @@
   background-color: #0069d9;
 }
 
-/* RESPONSIVE MEDIA QUERIES */
-
-/* For Tablet screens and below (<= 1024px) */
 @media (max-width: 1024px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -433,7 +435,6 @@
   }
 }
 
-/* For Mobile screens (<= 768px) */
 @media (max-width: 768px) {
   .products-page {
     padding: 1rem;
@@ -469,7 +470,7 @@
 
   .control-group.price-filter-group {
     flex: 1;
-    min-width: 0; /* allows shrinking on narrow widths */
+    min-width: 0;
   }
 
   .clear-filters-btn {
