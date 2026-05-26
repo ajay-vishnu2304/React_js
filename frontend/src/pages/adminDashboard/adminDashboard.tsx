@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Sidebar from "../../components/SideBar/SideBar";
 import NavBar from "../../components/NavBar/NavBar";
@@ -55,7 +55,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!token || !isAdmin) {
       setError("Unauthorized");
       setLoading(false);
@@ -73,7 +73,7 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, isAdmin]);
 
   const refreshData = () => {
     setRefreshTrigger((prev) => prev + 1);
@@ -82,7 +82,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
-  }, [refreshTrigger]);
+  }, [fetchData, refreshTrigger]);
 
   const handleMenuToggle = () => {
     setIsSidebarOpen(!isSidebarOpen);

@@ -29,14 +29,15 @@ export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!token) {
+      const currentToken = localStorage.getItem("token");
+      if (!currentToken) {
         setLoading(false);
         return;
       }
       try {
         const [ordersData, usersData] = await Promise.all([
-          getAllOrders(token),
-          getUsers(token)
+          getAllOrders(currentToken),
+          getUsers(currentToken)
         ]);
         setUsers(usersData);
 

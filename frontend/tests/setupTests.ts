@@ -28,7 +28,7 @@ Object.defineProperty(globalThis, 'import', {
 // (these are hard to fully eliminate without major test refactors and are non-fatal)
 const originalConsoleError = console.error;
 beforeAll(() => {
-  console.error = (...args: any[]) => {
+  console.error = (...args: unknown[]) => {
     const msg = args[0];
     if (typeof msg === 'string' && msg.includes('not wrapped in act')) {
       return; // suppress only the known testing noise

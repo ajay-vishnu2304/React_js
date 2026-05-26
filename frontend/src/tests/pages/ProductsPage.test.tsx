@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import ProductsPage from "../../pages/products/ProductsPage";
@@ -17,24 +16,16 @@ jest.mock("../../services/jwtUtils", () => ({
 jest.mock("../../services/apiService", () => ({
   getProducts: jest.fn(),
   createProduct: jest.fn(),
-  updateProduct: jest.fn(),
-  updateProductStock: jest.fn(),
   deleteProduct: jest.fn(),
   getProductImagesByProductId: jest.fn(),
-  addProductImage: jest.fn(),
-  deleteAllProductImages: jest.fn(),
 }));
 
 import { hasAnyRole } from "../../services/jwtUtils";
 import {
   getProducts,
   createProduct,
-  updateProduct,
-  updateProductStock,
   deleteProduct,
   getProductImagesByProductId,
-  addProductImage,
-  deleteAllProductImages,
 } from "../../services/apiService";
 
 describe("ProductsPage", () => {
