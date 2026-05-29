@@ -78,7 +78,7 @@ describe("apiService", () => {
       text: async () => { throw new Error("no text"); },
     });
 
-    await expect(loginUser({})).rejects.toThrow("Failed to parse response");
+    await expect(loginUser({ email: "test@test.com", password: "password" })).rejects.toThrow("Failed to parse response");
 
     consoleErrorSpy.mockRestore();
   });

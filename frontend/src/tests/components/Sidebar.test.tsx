@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import Sidebar from "../../components/SideBar/SideBar";
 import "@testing-library/jest-dom";
@@ -50,7 +51,8 @@ describe("Sidebar Component", () => {
     expect(screen.getByText("Products")).toBeInTheDocument();
   });
 
-  test("navigates to Dashboard when clicked", () => {
+  test("navigates to Dashboard when clicked", async () => {
+    const user = userEvent.setup();
     render(
       <MemoryRouter>
         <Sidebar />
@@ -58,12 +60,13 @@ describe("Sidebar Component", () => {
     );
 
     const dashboardLink = screen.getByText("Dashboard");
-    fireEvent.click(dashboardLink);
+    await user.click(dashboardLink);
 
     expect(mockNavigate).toHaveBeenCalledWith("/");
   });
 
-  test("navigates to Orders when clicked", () => {
+  test("navigates to Orders when clicked", async () => {
+    const user = userEvent.setup();
     render(
       <MemoryRouter>
         <Sidebar />
@@ -71,12 +74,13 @@ describe("Sidebar Component", () => {
     );
 
     const ordersLink = screen.getByText("Orders");
-    fireEvent.click(ordersLink);
+    await user.click(ordersLink);
 
     expect(mockNavigate).toHaveBeenCalledWith("/orders");
   });
 
-  test("navigates to Users when clicked", () => {
+  test("navigates to Users when clicked", async () => {
+    const user = userEvent.setup();
     render(
       <MemoryRouter>
         <Sidebar />
@@ -84,12 +88,13 @@ describe("Sidebar Component", () => {
     );
 
     const usersLink = screen.getByText("Users");
-    fireEvent.click(usersLink);
+    await user.click(usersLink);
 
     expect(mockNavigate).toHaveBeenCalledWith("/users");
   });
 
-  test("navigates to Products when clicked", () => {
+  test("navigates to Products when clicked", async () => {
+    const user = userEvent.setup();
     render(
       <MemoryRouter>
         <Sidebar />
@@ -97,12 +102,13 @@ describe("Sidebar Component", () => {
     );
 
     const productsLink = screen.getByText("Products");
-    fireEvent.click(productsLink);
+    await user.click(productsLink);
 
     expect(mockNavigate).toHaveBeenCalledWith("/products");
   });
 
-  test("calls onTabChange when provided instead of navigate", () => {
+  test("calls onTabChange when provided instead of navigate", async () => {
+    const user = userEvent.setup();
     render(
       <MemoryRouter>
         <Sidebar onTabChange={mockOnTabChange} />
@@ -110,7 +116,7 @@ describe("Sidebar Component", () => {
     );
 
     const dashboardLink = screen.getByText("Dashboard");
-    fireEvent.click(dashboardLink);
+    await user.click(dashboardLink);
 
     expect(mockOnTabChange).toHaveBeenCalledWith("Dashboard");
     expect(mockNavigate).not.toHaveBeenCalled();
@@ -123,11 +129,12 @@ describe("Sidebar Component", () => {
       </MemoryRouter>
     );
 
-    const ordersLink = screen.getByText("Orders");
+    const ordersLink = screen.getByText("Orders").closest("li");
     expect(ordersLink).toHaveClass("active");
   });
 
-  test("handles logout", () => {
+  test("handles logout", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     render(
@@ -137,7 +144,7 @@ describe("Sidebar Component", () => {
     );
 
     const logoutButton = screen.getByText("Logout");
-    fireEvent.click(logoutButton);
+    await user.click(logoutButton);
 
     expect(localStorage.getItem("token")).toBeNull();
     expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
@@ -209,7 +216,8 @@ describe("Sidebar Component", () => {
     expect(overlay).toBeInTheDocument();
   });
 
-  test("calls onClose when overlay is clicked", () => {
+  test("calls onClose when overlay is clicked", async () => {
+    const user = userEvent.setup();
     Object.defineProperty(window, "innerWidth", {
       writable: true,
       configurable: true,
@@ -229,7 +237,7 @@ describe("Sidebar Component", () => {
 
     const overlay = document.querySelector(".sidebar-overlay");
     if (overlay) {
-      fireEvent.click(overlay);
+      await user.click(overlay);
       expect(mockOnClose).toHaveBeenCalled();
     }
   });
@@ -252,11 +260,13 @@ describe("Sidebar Component", () => {
       window.dispatchEvent(new Event("resize"));
     });
 
+    // There are two elements with the original label; the close button is the second one
     const closeButton = screen.getByLabelText("Close sidebar");
     expect(closeButton).toBeInTheDocument();
   });
 
-  test("calls onClose when close button is clicked", () => {
+  test("calls onClose when close button is clicked", async () => {
+    const user = userEvent.setup();
     Object.defineProperty(window, "innerWidth", {
       writable: true,
       configurable: true,
@@ -275,7 +285,7 @@ describe("Sidebar Component", () => {
     });
 
     const closeButton = screen.getByLabelText("Close sidebar");
-    fireEvent.click(closeButton);
+    await user.click(closeButton);
 
     expect(mockOnClose).toHaveBeenCalled();
   });
@@ -338,7 +348,8 @@ describe("Sidebar Component", () => {
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
   });
 
-  test("all navigation items are clickable", () => {
+  test("all navigation items are clickable", async () => {
+    const user = userEvent.setup();
     render(
       <MemoryRouter>
         <Sidebar />
@@ -347,11 +358,11 @@ describe("Sidebar Component", () => {
 
     const navItems = ["Dashboard", "Orders", "Users", "Products"];
     
-    navItems.forEach((item) => {
+    for (const item of navItems) {
       const link = screen.getByText(item);
       expect(link).toBeInTheDocument();
-      fireEvent.click(link);
-    });
+      await user.click(link);
+    }
 
     expect(mockNavigate).toHaveBeenCalledTimes(4);
   });

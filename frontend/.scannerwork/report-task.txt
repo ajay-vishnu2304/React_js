@@ -2,5 +2,5 @@ projectKey=React-frontend
 serverUrl=http://localhost:9000
 serverVersion=26.4.0.121862
 dashboardUrl=http://localhost:9000/dashboard?id=React-frontend
-ceTaskId=7ce5530f-5da3-4a0c-80bb-e3cc8eecc9a0
-ceTaskUrl=http://localhost:9000/api/ce/task?id=7ce5530f-5da3-4a0c-80bb-e3cc8eecc9a0
+ceTaskId=32026f2d-b63b-488d-b51b-1fdb9ad559c3
+ceTaskUrl=http://localhost:9000/api/ce/task?id=32026f2d-b63b-488d-b51b-1fdb9ad559c3

@@ -1,14 +1,12 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Login from "../pages/auth/Login";
-import Signup from "../pages/auth/Signup";
-import Dashboard from "../pages/dashboard/Dashboard";
+import Login from "../pages/Auth/Login";
+import Signup from "../pages/Auth/Signup";
+import Dashboard from "../pages/Dashboard/Dashboard";
 import ProtectedRoute from "../components/ProtectedRoute/ProtectedRoute";
-import AdminRoute from "../components/AdminRoute/AdminRoute";
-import ProductManagerRoute from "../components/ProductManagerRoute/ProductManagerRoute";
-import NotFound from "../pages/notfound/NotFound";
-import AdminDashboard from "../pages/adminDashboard/adminDashboard";
-import ProductManagerDashboard from "../pages/productManagerDashboard/ProductManagerDashboard";
-import UsersPage from "../pages/users/UsersPage";
+import NotFound from "../pages/NotFound/NotFound";
+import AdminDashboard from "../pages/AdminDashboard/AdminDashboard";
+import ProductManagerDashboard from "../pages/ProductManagerDashboard/ProductManagerDashboard";
+import UsersPage from "../pages/Users/UsersPage";
 
 function AppRoutes() {
   return (
@@ -19,12 +17,12 @@ function AppRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
         </Route>
         
-        <Route element={<AdminRoute />}>
+        <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/users" element={<UsersPage />} />
         </Route>
         
-        <Route element={<ProductManagerRoute />}>
+        <Route element={<ProtectedRoute allowedRoles={["admin", "product_manager"]} />}>
           <Route path="/product-manager" element={<ProductManagerDashboard />} />
         </Route>
         

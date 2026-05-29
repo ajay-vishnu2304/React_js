@@ -1,6 +1,7 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import OrdersPage from "../../pages/orders/OrdersPage";
+import OrdersPage from "../../pages/Orders/OrdersPage";
 import "@testing-library/jest-dom";
 
 jest.mock("jspdf", () => {
@@ -12,6 +13,14 @@ jest.mock("jspdf", () => {
 
 jest.mock("jspdf-autotable", () => jest.fn());
 
+jest.mock("react-hot-toast", () => ({
+  __esModule: true,
+  default: {
+    success: jest.fn(),
+    error: jest.fn(),
+  },
+}));
+
 jest.mock("../../services/jwtUtils", () => ({
   hasRole: jest.fn(),
 }));
@@ -22,6 +31,7 @@ jest.mock("../../services/apiService", () => ({
   updateOrderStatus: jest.fn(),
 }));
 
+import toast from "react-hot-toast";
 import { hasRole } from "../../services/jwtUtils";
 import {
   getAllOrders,
@@ -31,7 +41,6 @@ import {
 
 describe("OrdersPage", () => {
   let consoleErrorSpy: jest.SpyInstance;
-  let alertSpy: jest.SpyInstance;
 
   const rawMockOrders = [
     {
@@ -65,15 +74,15 @@ describe("OrdersPage", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (toast.success as jest.Mock).mockClear();
+    (toast.error as jest.Mock).mockClear();
     localStorage.clear();
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-    alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
     (hasRole as jest.Mock).mockReturnValue(true);
   });
 
   afterEach(() => {
     consoleErrorSpy.mockRestore();
-    alertSpy.mockRestore();
   });
 
   test("renders loading state initially", () => {
@@ -130,6 +139,7 @@ describe("OrdersPage", () => {
   });
 
   test("filters orders by status", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getAllOrders as jest.Mock).mockResolvedValue(rawMockOrders);
@@ -147,7 +157,7 @@ describe("OrdersPage", () => {
     });
 
     const statusFilter = screen.getByDisplayValue("All Statuses");
-    fireEvent.change(statusFilter, { target: { value: "pending" } });
+    await user.selectOptions(statusFilter, "pending");
 
     await waitFor(() => {
       expect(screen.getByText("John Doe")).toBeInTheDocument();
@@ -194,6 +204,7 @@ describe("OrdersPage", () => {
   });
 
   test("handles status change for admin user", async () => {
+    const user = userEvent.setup();
     (hasRole as jest.Mock).mockReturnValue(true);
     localStorage.setItem("token", "fake-token");
     
@@ -214,7 +225,7 @@ describe("OrdersPage", () => {
     // Use querySelector to find status dropdowns instead of getAllByDisplayValue
     const statusDropdowns = document.querySelectorAll('.status-dropdown');
     expect(statusDropdowns.length).toBeGreaterThan(0);
-    fireEvent.change(statusDropdowns[0], { target: { value: "delivered" } });
+    await user.selectOptions(statusDropdowns[0], "delivered");
 
     await waitFor(() => {
       expect(updateOrderStatus).toHaveBeenCalledWith(
@@ -274,6 +285,7 @@ describe("OrdersPage", () => {
   });
 
   test("toggles export menu", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getAllOrders as jest.Mock).mockResolvedValue(rawMockOrders);
@@ -290,15 +302,14 @@ describe("OrdersPage", () => {
     });
 
     const exportButton = screen.getByText("Export Data ▾");
-    fireEvent.click(exportButton);
+    await user.click(exportButton);
 
-    await waitFor(() => {
-      expect(screen.getByText("Download CSV")).toBeInTheDocument();
-      expect(screen.getByText("Download PDF")).toBeInTheDocument();
-    });
+    expect(screen.getByTestId("download-csv")).toBeInTheDocument();
+    expect(screen.getByText("Download PDF")).toBeInTheDocument();
   });
 
   test("closes export menu when clicking outside", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getAllOrders as jest.Mock).mockResolvedValue(rawMockOrders);
@@ -315,21 +326,18 @@ describe("OrdersPage", () => {
     });
 
     const exportButton = screen.getByText("Export Data ▾");
-    fireEvent.click(exportButton);
+    await user.click(exportButton);
 
-    await waitFor(() => {
-      expect(screen.getByText("Download CSV")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Download CSV")).toBeInTheDocument();
 
     // Click outside to close
-    fireEvent.click(screen.getByText("Orders Management"));
+    await user.click(screen.getByText("Orders Management"));
 
-    await waitFor(() => {
-      expect(screen.queryByText("Download CSV")).not.toBeInTheDocument();
-    });
+    expect(screen.queryByText("Download CSV")).not.toBeInTheDocument();
   });
 
   test("shows no orders message when filter returns empty", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getAllOrders as jest.Mock).mockResolvedValue(rawMockOrders);
@@ -346,7 +354,7 @@ describe("OrdersPage", () => {
     });
 
     const statusFilter = screen.getByDisplayValue("All Statuses");
-    fireEvent.change(statusFilter, { target: { value: "cancelled" } });
+    await user.selectOptions(statusFilter, "cancelled");
 
     await waitFor(() => {
       expect(screen.getByText("No orders found for the selected status.")).toBeInTheDocument();
@@ -382,7 +390,7 @@ describe("OrdersPage", () => {
     // Get the values from the dropdowns
     const dropdownValues = Array.from(statusDropdowns).map(select => (select as HTMLSelectElement).value);
     
-    // completed should be normalized to delivered
+    // delivered should be normalized to delivered
     expect(dropdownValues).toContain("delivered");
     // PLACED should be normalized to placed
     expect(dropdownValues).toContain("placed");
@@ -412,6 +420,7 @@ describe("OrdersPage", () => {
   });
 
   test("calls onStatusUpdated callback when provided", async () => {
+    const user = userEvent.setup();
     const mockOnStatusUpdated = jest.fn();
     (hasRole as jest.Mock).mockReturnValue(true);
     localStorage.setItem("token", "fake-token");
@@ -433,7 +442,7 @@ describe("OrdersPage", () => {
     // Use querySelector to find status dropdowns
     const statusDropdowns = document.querySelectorAll('.status-dropdown');
     expect(statusDropdowns.length).toBeGreaterThan(0);
-    fireEvent.change(statusDropdowns[0], { target: { value: "delivered" } });
+    await user.selectOptions(statusDropdowns[0], "delivered");
 
     await waitFor(() => {
       expect(mockOnStatusUpdated).toHaveBeenCalled();
@@ -441,6 +450,7 @@ describe("OrdersPage", () => {
   });
 
   test("handles status update error", async () => {
+    const user = userEvent.setup();
     (hasRole as jest.Mock).mockReturnValue(true);
     localStorage.setItem("token", "fake-token");
     
@@ -461,10 +471,10 @@ describe("OrdersPage", () => {
     // Use querySelector to find status dropdowns
     const statusDropdowns = document.querySelectorAll('.status-dropdown');
     expect(statusDropdowns.length).toBeGreaterThan(0);
-    fireEvent.change(statusDropdowns[0], { target: { value: "delivered" } });
+    await user.selectOptions(statusDropdowns[0], "delivered");
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith("Failed to update status. Please try again.");
+      expect(toast.error).toHaveBeenCalledWith("Failed to update status. Please try again.");
     });
   });
 

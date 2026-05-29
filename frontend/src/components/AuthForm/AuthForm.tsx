@@ -1,96 +1,70 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser, registerUser } from "../../services/apiService";
 import { getHomePathForRole, getUserRole } from "../../services/jwtUtils";
+import { loginSchema, signupSchema, type CombinedFormData } from "../../validators/userSchema";
 import "./AuthForm.css";
 
-type AuthFormProps = {
+type AuthFormProps = Readonly<{
   title: string;
   buttonText: string;
   isSignup?: boolean;
-};
+}>;
 
 function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
   const navigate = useNavigate();
-
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    first_name: "",
-    last_name: "",
-    dob: "",
-    phone: "",
-    password: "",
-  });
-
-  const [error, setError] = useState<string | null>(null);
+  const [globalError, setGlobalError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [id]: value,
-    }));
-  };
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CombinedFormData>({
+    resolver: zodResolver(isSignup ? signupSchema : loginSchema),
+    defaultValues: isSignup
+      ? { username: "", email: "", first_name: "", last_name: "", dob: "", phone: "", password: "" }
+      : { email: "", password: "" },
+  });
 
-  const validateForm = () => {
-    if (isSignup) {
-      if (!formData.username.trim()) return "Username is required";
-      if (!formData.email.trim()) return "Email is required";
-      if (!formData.first_name.trim()) return "First name is required";
-      if (!formData.dob) return "Date of birth is required";
-      if (!formData.phone.trim()) return "Phone number is required";
-      if (!formData.password) return "Password is required";
-      if (formData.password.length < 6) return "Password must be at least 6 characters";
-    } else {
-      if (!formData.email.trim()) return "Email is required";
-      if (!formData.password) return "Password is required";
-    }
-    return null;
-  };
-
-  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
+  const onSubmit = async (data: CombinedFormData) => {
+    setGlobalError(null);
     setSuccess(null);
-
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
     setLoading(true);
 
-      try {
-        const data = isSignup
-          ? await registerUser({
-              username: formData.username.trim(),
-              email: formData.email.trim(),
-              first_name: formData.first_name.trim(),
-              last_name: formData.last_name.trim() || undefined,
-              dob: formData.dob,
-              phone: formData.phone.trim(),
-              password: formData.password,
-            })
-          : await loginUser({
-              email: formData.email.trim(),
-              password: formData.password,
-            });
-
-        if (isSignup) {
-          setSuccess("Registration successful! Redirecting...");
-          navigate("/", { replace: true });
-        } else {
-          setSuccess("Login successful!");
-          localStorage.setItem("token", data.token);
-          navigate(getHomePathForRole(getUserRole(data.token)), { replace: true });
+    try {
+      if (isSignup) {
+        if (!data.username || !data.first_name || !data.dob || !data.phone) {
+          setGlobalError("Please fill in all required fields");
+          setLoading(false);
+          return;
         }
-      } catch (err: unknown) {
+        await registerUser({
+          username: data.username!.trim(),
+          email: data.email?.trim() || "",
+          first_name: data.first_name!.trim(),
+          last_name: data.last_name?.trim() || undefined,
+          dob: data.dob!,
+          phone: data.phone!.trim(),
+          password: data.password || "",
+        });
+        setSuccess("Registration successful! Redirecting...");
+        navigate("/", { replace: true });
+      } else {
+        const result = await loginUser({
+          email: data.email?.trim() || "",
+          password: data.password || "",
+        });
+        setSuccess("Login successful!");
+        localStorage.setItem("token", result.token);
+        navigate(getHomePathForRole(getUserRole(result.token)), { replace: true });
+      }
+    } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
-      setError(message);
+      setGlobalError(message);
     } finally {
       setLoading(false);
     }
@@ -98,10 +72,10 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
 
   return (
     <div className="auth-container">
-      <form className="auth-form" onSubmit={handleSubmit} noValidate>
+      <form className="auth-form" onSubmit={handleSubmit(onSubmit)} noValidate>
         <h2>{title}</h2>
 
-        {error && <div className="error-message">{error}</div>}
+        {globalError && <div className="error-message">{globalError}</div>}
         {success && <div className="success-message">{success}</div>}
 
         {isSignup && (
@@ -111,10 +85,10 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
               <input
                 id="username"
                 type="text"
-                value={formData.username}
-                onChange={handleChange}
+                {...register("username")}
                 placeholder="Enter username"
               />
+              {errors.username && <span className="field-error">{String(errors.username.message)}</span>}
             </div>
 
             <div className="form-group">
@@ -122,10 +96,10 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
               <input
                 id="email"
                 type="email"
-                value={formData.email}
-                onChange={handleChange}
+                {...register("email")}
                 placeholder="Enter email"
               />
+              {errors.email && <span className="field-error">{String(errors.email.message)}</span>}
             </div>
 
             <div className="form-group">
@@ -133,10 +107,10 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
               <input
                 id="first_name"
                 type="text"
-                value={formData.first_name}
-                onChange={handleChange}
+                {...register("first_name")}
                 placeholder="Enter first name"
               />
+              {errors.first_name && <span className="field-error">{String(errors.first_name.message)}</span>}
             </div>
 
             <div className="form-group">
@@ -144,10 +118,10 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
               <input
                 id="last_name"
                 type="text"
-                value={formData.last_name}
-                onChange={handleChange}
-                placeholder="Enter last name"
+                {...register("last_name")}
+                placeholder="Enter last name (optional)"
               />
+              {errors.last_name && <span className="field-error">{String(errors.last_name.message)}</span>}
             </div>
 
             <div className="form-group">
@@ -155,9 +129,9 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
               <input
                 id="dob"
                 type="date"
-                value={formData.dob}
-                onChange={handleChange}
+                {...register("dob")}
               />
+              {errors.dob && <span className="field-error">{String(errors.dob.message)}</span>}
             </div>
 
             <div className="form-group">
@@ -165,10 +139,10 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
               <input
                 id="phone"
                 type="text"
-                value={formData.phone}
-                onChange={handleChange}
+                {...register("phone")}
                 placeholder="Enter phone number"
               />
+              {errors.phone && <span className="field-error">{String(errors.phone.message)}</span>}
             </div>
           </>
         )}
@@ -179,10 +153,10 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
             <input
               id="email"
               type="email"
-              value={formData.email}
-              onChange={handleChange}
+              {...register("email")}
               placeholder="Enter email"
             />
+            {errors.email && <span className="field-error">{String(errors.email.message)}</span>}
           </div>
         )}
 
@@ -191,10 +165,10 @@ function AuthForm({ title, buttonText, isSignup = false }: AuthFormProps) {
           <input
             id="password"
             type="password"
-            value={formData.password}
-            onChange={handleChange}
+            {...register("password")}
             placeholder="Enter password"
           />
+          {errors.password && <span className="field-error">{String(errors.password.message)}</span>}
         </div>
 
         <button className="auth-btn" type="submit" disabled={loading}>

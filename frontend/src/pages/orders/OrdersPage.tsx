@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import toast from "react-hot-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./OrdersPage.css";
@@ -15,79 +16,98 @@ interface Order {
 }
 
 interface OrdersPageProps {
-  onStatusUpdated?: () => void;
+  readonly onStatusUpdated?: () => void;
 }
 
-export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
+const normalizeStatus = (status: string): string => {
+  if (!status) return "pending";
+  const s = status.toLowerCase();
+  if (s === "pending") return "pending";
+  if (s === "delivered" || s === "completed") return "delivered";
+  if (s === "placed") return "placed";
+  if (s === "cancelled" || s === "canceled") return "cancelled";
+  if (s === "placed_no_invoice") return "placed_no_invoice";
+  return s;
+};
+
+const getCustomerName = (userId: number, usersData: Array<{ id: number; first_name?: string; last_name?: string; username: string }>): string => {
+  const user = usersData.find((u) => u.id === userId);
+  if (!user) return `User #${userId}`;
+  const firstName = user.first_name ?? "";
+  const lastName = user.last_name ?? "";
+  const fullName = `${firstName} ${lastName}`.trim();
+  return fullName || user.username || `User #${userId}`;
+};
+
+export default function OrdersPage({ onStatusUpdated }: Readonly<OrdersPageProps>) {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [, setUsers] = useState<unknown[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem("token");
   const isAdmin = token ? hasRole(token, "admin") : false;
 
   useEffect(() => {
+    const controller = new AbortController();
+    let isMounted = true;
+
     const fetchData = async () => {
       const currentToken = localStorage.getItem("token");
       if (!currentToken) {
-        setLoading(false);
+        if (isMounted) setLoading(false);
         return;
       }
       try {
         const [ordersData, usersData] = await Promise.all([
-          getAllOrders(currentToken),
-          getUsers(currentToken)
+          getAllOrders(currentToken, controller.signal),
+          getUsers(currentToken, controller.signal),
         ]);
-        setUsers(usersData);
 
-        const normalizeStatus = (status: string) => {
-          if (!status) return 'pending';
-          const s = status.toLowerCase();
-          if (s === 'pending') return 'pending';
-          if (s === 'completed') return 'delivered';
-          if (s === 'shipped') return 'shipped';
-          if (s === 'cancelled' || s === 'canceled') return 'cancelled';
-          if (s === 'placed') return 'placed';
-          return s;
-        };
+        const enrichedOrders: Order[] = ordersData.map((order) => ({
+          id: order.id,
+          user_id: order.user_id,
+          customer: getCustomerName(order.user_id, usersData),
+          total_amount: order.total_amount,
+          order_status: normalizeStatus(order.order_status),
+          created_at: order.created_at,
+        }));
 
-        const enrichedOrders: Order[] = ordersData.map((order) => {
-          const user = usersData.find((u) => u.id === order.user_id);
-          const customerName = user 
-            ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || `User #${order.user_id}`
-            : `User #${order.user_id}`;
-
-          return {
-            id: order.id,
-            user_id: order.user_id,
-            customer: customerName,
-            total_amount: order.total_amount,
-            order_status: normalizeStatus(order.order_status),
-            created_at: order.created_at,
-          };
-        });
-
-        setOrders(enrichedOrders);
+        if (isMounted) setOrders(enrichedOrders);
       } catch (err) {
-        console.error("Failed to fetch orders", err);
+        if (!controller.signal.aborted) {
+          console.error("Failed to fetch orders", err);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchData();
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, []);
 
-  const filteredOrders = statusFilter === "All" 
-    ? orders 
-    : orders.filter(order => order.order_status.toLowerCase() === statusFilter.toLowerCase());
+  const filteredOrders = useMemo(
+    () =>
+      statusFilter === "All"
+        ? orders
+        : orders.filter(
+            (order) =>
+              order.order_status.toLowerCase() === statusFilter.toLowerCase(),
+          ),
+    [orders, statusFilter],
+  );
 
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     if (!token || !isAdmin) {
-      alert("Admin access required");
+      toast.error("Admin access required");
       return;
     }
+
+    const originalOrder = orders.find(o => o.id === orderId);
+    const originalStatus = originalOrder?.order_status;
 
     setOrders(prev =>
       prev.map(order =>
@@ -97,12 +117,21 @@ export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
 
     try {
       await updateOrderStatus(token, orderId, newStatus);
+      toast.success(`Order #${orderId} status updated to ${newStatus}`);
       if (onStatusUpdated) {
         onStatusUpdated();
       }
     } catch (err) {
       console.error("Failed to update order status", err);
-      alert("Failed to update status. Please try again.");
+      toast.error("Failed to update status. Please try again.");
+      // Revert optimistic update on error
+      if (originalStatus) {
+        setOrders(prev =>
+          prev.map(order =>
+            order.id === orderId ? { ...order, order_status: originalStatus } : order
+          )
+        );
+      }
     }
   };
 
@@ -129,7 +158,7 @@ export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     setShowExportMenu(false);
   };
 
@@ -141,7 +170,7 @@ export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
     const tableRows = filteredOrders.map(order => [
       `#${order.id}`,
       order.customer,
-      `₹${order.total_amount}`,
+      `₹${String(order.total_amount)}`,
       new Date(order.created_at).toLocaleDateString(),
       order.order_status
     ]);
@@ -157,8 +186,15 @@ export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
   };
 
   return (
-    <div className="orders-page" onClick={() => setShowExportMenu(false)}>
-      <div className="page-header">
+    <main className="orders-page">
+      <div
+        role="banner"
+        className="page-header"
+        onClick={() => setShowExportMenu(false)}
+        onKeyDown={(e) => e.key === "Escape" && setShowExportMenu(false)}
+        tabIndex={0}
+        aria-label="Close export menu"
+      >
         <h1>Orders Management</h1>
         <div className="header-actions">
           <select 
@@ -170,21 +206,25 @@ export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
             <option value="pending">Pending</option>
             <option value="placed">Placed</option>
             <option value="delivered">Delivered</option>
-            <option value="shipped">Shipped</option>
             <option value="cancelled">Cancelled</option>
+            <option value="placed_no_invoice">Placed (No Invoice)</option>
           </select>
           
-          <div className="export-container" onClick={(e) => e.stopPropagation()}>
-            <button 
-              className="export-btn" 
-              onClick={() => setShowExportMenu(!showExportMenu)}
+          <div className="export-container">
+            <button
+              className="export-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowExportMenu(!showExportMenu);
+              }}
+              type="button"
             >
               Export Data ▾
             </button>
             {showExportMenu && (
               <div className="export-menu">
-                <button onClick={exportCSV}>Download CSV</button>
-                <button onClick={exportPDF}>Download PDF</button>
+                 <button type="button" onClick={exportCSV} data-testid="download-csv">Download CSV</button>
+                <button type="button" onClick={exportPDF}>Download PDF</button>
               </div>
             )}
           </div>
@@ -224,12 +264,12 @@ export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
                         { value: 'pending', label: 'Pending' },
                         { value: 'placed', label: 'Placed' },
                         { value: 'delivered', label: 'Delivered' },
-                        { value: 'shipped', label: 'Shipped' },
                         { value: 'cancelled', label: 'Cancelled' },
+                        { value: 'placed_no_invoice', label: 'Placed (No Invoice)' },
                       ].map(({ value, label }) => (
                         <option key={value} value={value}>{label}</option>
                       ))}
-                      {!['pending', 'delivered', 'shipped', 'cancelled', 'placed'].includes(order.order_status) && (
+                      {!['pending', 'placed', 'delivered', 'cancelled', 'placed_no_invoice'].includes(order.order_status) && (
                         <option value={order.order_status}>{order.order_status}</option>
                       )}
                     </select>
@@ -250,6 +290,6 @@ export default function OrdersPage({ onStatusUpdated }: OrdersPageProps) {
         </table>
         )}
       </div>
-    </div>
+    </main>
   );
 }

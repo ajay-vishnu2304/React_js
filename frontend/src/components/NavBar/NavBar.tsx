@@ -3,10 +3,10 @@ import { FaRegBell, FaRegEnvelope, FaBars } from "react-icons/fa";
 import "./NavBar.css";
 
 interface NavBarProps {
-  onMenuToggle?: () => void;
+  readonly onMenuToggle?: () => void;
 }
 
-export default function NavBar({ onMenuToggle }: NavBarProps) {
+export default function NavBar({ onMenuToggle }: Readonly<NavBarProps>) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleMenuToggle = () => {

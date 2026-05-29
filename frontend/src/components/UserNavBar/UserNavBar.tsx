@@ -1,6 +1,7 @@
 import { FaSearch, FaRegUser, FaShoppingBag } from "react-icons/fa";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { logout } from "../../services/jwtUtils";
 import "./UserNavBar.css";
 
 export default function UserNavBar() {
@@ -8,8 +9,7 @@ export default function UserNavBar() {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
+    logout(navigate);
   };
 
   const toggleDropdown = () => setShowDropdown((prev) => !prev);
@@ -35,8 +35,15 @@ export default function UserNavBar() {
           <button className="nav-icon-btn" aria-label="Search">
             <FaSearch />
           </button>
-          <div className="nav-icon-btn profile-wrapper" aria-label="Profile" onClick={toggleDropdown}>
-            <FaRegUser />
+          <div className="profile-wrapper">
+            <button
+              className="nav-icon-btn"
+              aria-label="Profile"
+              onClick={toggleDropdown}
+              type="button"
+            >
+              <FaRegUser />
+            </button>
             {showDropdown && (
               <div className="profile-dropdown">
                 <button className="logout-btn" onClick={handleLogout}>Logout</button>

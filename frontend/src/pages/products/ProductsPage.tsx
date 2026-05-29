@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
-import type { Product, ProductImage } from "../../services/apiService";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import toast from "react-hot-toast";
+import type { Product, CreateProductResponse } from "../../services/apiService";
 import {
   getProducts,
   createProduct,
   updateProduct,
   updateProductStock,
   deleteProduct,
-  getProductImagesByProductId,
+  getProductImages,
   addProductImage,
   deleteAllProductImages,
 } from "../../services/apiService";
@@ -29,8 +30,14 @@ export default function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [modalMode, setModalMode] = useState<"add" | "edit">("add");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
-  const [productImageMap, setProductImageMap] = useState<Record<number, string>>({});
+  const [productImageMap, setProductImageMap] = useState<
+    Record<number, string>
+  >({});
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -43,46 +50,66 @@ export default function ProductsPage() {
   });
 
   const token = localStorage.getItem("token") || "";
-  const canManageProducts = token ? hasAnyRole(token, ["admin", "product_manager"]) : false;
+  const canManageProducts = token
+    ? hasAnyRole(token, ["admin", "product_manager"])
+    : false;
 
-  const fetchProductsList = useCallback(async () => {
-    setLoading(true);
+  const loadProductImages = useCallback(async (): Promise<
+    Record<number, string>
+  > => {
     try {
-      const data = await getProducts(token);
-      setProducts(data);
-
-      try {
-        const map: Record<number, string> = {};
-        await Promise.all(
-          data.map(async (product: Product) => {
-            try {
-              const imgs: ProductImage[] = await getProductImagesByProductId(token, product.id);
-              if (imgs.length > 0) {
-                map[product.id] = imgs[0].image_url;
-              }
-            } catch {
-              void 0;
-            }
-          })
-        );
-        setProductImageMap(map);
-        console.log("Admin - Loaded product images map (per product):", map);
-      } catch (imgErr) {
-        console.error("Admin - Failed to load product images:", imgErr);
-        setProductImageMap({});
+      const allImages = await getProductImages(token);
+      const map: Record<number, string> = {};
+      for (const img of allImages) {
+        if (!map[img.product_id]) {
+          map[img.product_id] = img.image_url;
+        }
       }
-
-      setError(null);
-    } catch (err: unknown) {
-      setError((err as Error).message || "Failed to load products.");
-    } finally {
-      setLoading(false);
+      return map;
+    } catch (imgErr) {
+      console.error("Admin - Failed to load product images:", imgErr);
+      return {};
     }
   }, [token]);
 
+  const fetchProductsList = useCallback(
+    async (signal: AbortSignal, setLoadingOnStart: boolean = true) => {
+      if (setLoadingOnStart) {
+        setLoading(true);
+      }
+      try {
+        const data = await getProducts(token, signal);
+        if (!signal.aborted) {
+          setProducts(data);
+          const imageMap = await loadProductImages();
+          if (!signal.aborted) {
+            setProductImageMap(imageMap);
+            setError(null);
+          }
+        }
+      } catch (err) {
+        if (!signal.aborted) {
+          const message =
+            typeof err === "object" && err !== null && "message" in err
+              ? (err as { message: string }).message
+              : "Failed to load products.";
+          setError(message);
+        }
+      } finally {
+        if (!signal.aborted) {
+          setLoading(false);
+        }
+      }
+    },
+    [token, loadProductImages],
+  );
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchProductsList();
+    const controller = new AbortController();
+    fetchProductsList(controller.signal, true);
+    return () => {
+      controller.abort();
+    };
   }, [fetchProductsList]);
 
   const handleOpenAddModal = () => {
@@ -101,11 +128,13 @@ export default function ProductsPage() {
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = async (product: Product) => {
+  const handleOpenEditModal = (product: Product) => {
     setModalMode("edit");
     setSelectedProduct(product);
 
-    const baseForm = {
+    const imageUrl = productImageMap[product.id] || "";
+
+    setFormData({
       name: product.name,
       description: product.description || "",
       price: String(product.price),
@@ -113,33 +142,8 @@ export default function ProductsPage() {
       brand: product.brand || "",
       color: product.color || "",
       size: product.size || "",
-      image_url: "",
-    };
-    setFormData(baseForm);
-
-    try {
-      const images = await getProductImagesByProductId(token, product.id);
-      console.log("Edit modal - raw response from getProductImagesByProductId:", images);
-
-      let imageUrl = "";
-
-      if (Array.isArray(images) && images.length > 0) {
-        const first = images[0] as unknown as Record<string, unknown>;
-        imageUrl = (first.image_url as string) || (first.url as string) || (first.path as string) || (first.src as string) || "";
-      } else if (images && typeof images === "object") {
-        const obj = images as unknown as Record<string, unknown>;
-        imageUrl = (obj.image_url as string) || (obj.url as string) || (obj.path as string) || (obj.src as string) || "";
-      }
-
-      if (imageUrl) {
-        setFormData(prev => ({ ...prev, image_url: imageUrl }));
-        console.log("Edit modal - existing image URL loaded:", imageUrl);
-      } else {
-        console.log("Edit modal - no image found for this product");
-      }
-    } catch (err) {
-      console.error("Edit modal - error while loading existing image:", err);
-    }
+      image_url: imageUrl,
+    });
 
     setIsModalOpen(true);
   };
@@ -148,26 +152,34 @@ export default function ProductsPage() {
     setIsModalOpen(false);
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFormChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
+  const validateFormData = (): string | null => {
     if (!formData.name.trim()) {
-      alert("Product Name is required.");
-      return;
+      return "Product Name is required.";
     }
-    const priceNum = parseFloat(formData.price);
-    const stockNum = parseInt(formData.stock_no, 10);
+    const priceNum = Number.parseFloat(formData.price);
+    if (Number.isNaN(priceNum) || priceNum <= 0) {
+      return "Please enter a valid positive price.";
+    }
+    const stockNum = Number.parseInt(formData.stock_no, 10);
+    if (Number.isNaN(stockNum) || stockNum < 0 || !Number.isInteger(stockNum)) {
+      return "Please enter a valid non-negative integer stock quantity.";
+    }
+    return null;
+  };
 
-    if (isNaN(priceNum) || priceNum <= 0) {
-      alert("Please enter a valid positive price.");
-      return;
-    }
-    if (isNaN(stockNum) || stockNum < 0 || !Number.isInteger(stockNum)) {
-      alert("Please enter a valid non-negative integer stock quantity.");
-      return;
-    }
-
-    const payload = {
+  const buildProductPayload = () => {
+    const priceNum = Number.parseFloat(formData.price);
+    const stockNum = Number.parseInt(formData.stock_no, 10);
+    return {
       name: formData.name,
       description: formData.description || undefined,
       price: priceNum,
@@ -176,58 +188,97 @@ export default function ProductsPage() {
       color: formData.color || undefined,
       size: formData.size || undefined,
     };
+  };
 
-    try {
-      if (modalMode === "add") {
-        const created: unknown = await createProduct(token, payload);
-        const createdObj = created as Record<string, unknown>;
-        const newProductId = (createdObj.id as number) ?? (createdObj.data as Record<string, unknown>)?.id ?? null;
-
-        alert("Product added successfully!");
-
-        if (formData.image_url && newProductId) {
-          try {
-            await addProductImage(token, newProductId, formData.image_url);
-          } catch (imgErr) {
-            console.warn("Failed to attach image after create:", imgErr);
-          }
-        }
-      } else if (modalMode === "edit" && selectedProduct) {
-        await updateProduct(token, selectedProduct.id, payload);
-
-        try {
-          await deleteAllProductImages(token, selectedProduct.id);
-          if (formData.image_url) {
-            await addProductImage(token, selectedProduct.id, formData.image_url);
-          }
-        } catch (imgErr) {
-          console.warn("Failed to update image:", imgErr);
-        }
-
-        alert("Product updated successfully!");
+  const handleAddProduct = async (newProductId: number | null) => {
+    toast.success("Product added successfully!");
+    if (formData.image_url && newProductId) {
+      try {
+        await addProductImage(token, newProductId, formData.image_url);
+      } catch (imgErr) {
+        console.warn("Failed to attach image after create:", imgErr);
       }
-
-      setIsModalOpen(false);
-      fetchProductsList();
-    } catch (err: unknown) {
-      alert((err as Error).message || "Failed to save product.");
     }
   };
 
-  const handleDeleteClick = async (id: number, name: string, stock: number) => {
-    if (stock > 0) {
-      alert("Cannot delete product with stock > 0");
+  const handleEditProduct = async (payload: Partial<Product>) => {
+    if (!selectedProduct) return;
+    await updateProduct(token, selectedProduct.id, payload);
+    if (formData.image_url) {
+      await deleteAllProductImages(token, selectedProduct.id).catch((imgErr) =>
+        console.warn("Failed to delete old images:", imgErr),
+      );
+      await addProductImage(
+        token,
+        selectedProduct.id,
+        formData.image_url,
+      ).catch((imgErr) => console.warn("Failed to add image:", imgErr));
+    }
+    toast.success("Product updated successfully!");
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const validationError = validateFormData();
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
-    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
-      try {
-        await deleteProduct(token, id);
-        alert("Product deleted successfully!");
-        fetchProductsList();
-      } catch (err: unknown) {
-        alert((err as Error).message || "Failed to delete product.");
+
+    const payload = buildProductPayload();
+
+    try {
+      if (modalMode === "add") {
+        const created: CreateProductResponse = await createProduct(
+          token,
+          payload,
+        );
+        const newProductId = created.id ?? created.product?.id ?? null;
+        await handleAddProduct(newProductId);
+      } else if (modalMode === "edit") {
+        await handleEditProduct(payload);
       }
+
+      setIsModalOpen(false);
+      const controller = new AbortController();
+      fetchProductsList(controller.signal, false);
+    } catch (err) {
+      const message =
+        typeof err === "object" && err !== null && "message" in err
+          ? (err as { message: string }).message
+          : "Failed to save product.";
+      toast.error(message);
     }
+  };
+
+  const handleDeleteClick = (id: number, name: string, stock: number) => {
+    if (stock > 0) {
+      toast.error("Cannot delete product with stock > 0");
+      return;
+    }
+    setDeleteConfirm({ id, name });
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!deleteConfirm) return;
+    try {
+      await deleteProduct(token, deleteConfirm.id);
+      toast.success("Product deleted successfully!");
+      setDeleteConfirm(null);
+      const controller = new AbortController();
+      fetchProductsList(controller.signal, false);
+    } catch (err) {
+      const message =
+        typeof err === "object" && err !== null && "message" in err
+          ? (err as { message: string }).message
+          : "Failed to delete product.";
+      toast.error(message);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirm(null);
   };
 
   const handleStartStockEdit = (product: Product) => {
@@ -236,53 +287,82 @@ export default function ProductsPage() {
   };
 
   const handleSaveStockEdit = async (id: number) => {
-    if (tempStockValue < 0 || isNaN(tempStockValue) || !Number.isInteger(tempStockValue)) {
-      alert("Stock must be a non-negative integer.");
+    if (
+      tempStockValue < 0 ||
+      Number.isNaN(tempStockValue) ||
+      !Number.isInteger(tempStockValue)
+    ) {
+      toast.error("Stock must be a non-negative integer.");
       return;
     }
     try {
       await updateProductStock(token, id, tempStockValue);
       setEditingStockId(null);
-      fetchProductsList();
-    } catch (err: unknown) {
-      alert((err as Error).message || "Failed to update stock.");
+      const controller = new AbortController();
+      fetchProductsList(controller.signal, false);
+    } catch (err) {
+      const message =
+        typeof err === "object" && err !== null && "message" in err
+          ? (err as { message: string }).message
+          : "Failed to update stock.";
+      toast.error(message);
     }
   };
 
-  const uniqueBrands = Array.from(
-    new Set(
-      products
-        .map((p) => p.brand?.trim())
-        .filter((brand): brand is string => !!brand)
-    )
+  const uniqueBrands = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          products
+            .map((p) => p.brand?.trim())
+            .filter((brand): brand is string => !!brand),
+        ),
+      ),
+    [products],
   );
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.description || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.brand || "").toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredProducts = useMemo(
+    () =>
+      products.filter((product) => {
+        const matchesSearch =
+          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (product.description || "")
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          (product.brand || "")
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase());
 
-    const matchesBrand =
-      selectedBrand === "all" ||
-      (product.brand && product.brand.trim() === selectedBrand);
+        const matchesBrand =
+          selectedBrand === "all" || product.brand?.trim() === selectedBrand;
 
-    let matchesStock = true;
-    if (stockFilter === "inStock") {
-      matchesStock = product.stock_no > 10;
-    } else if (stockFilter === "lowStock") {
-      matchesStock = product.stock_no > 0 && product.stock_no <= 10;
-    } else if (stockFilter === "outOfStock") {
-      matchesStock = product.stock_no === 0;
-    }
+        let matchesStock = true;
+        if (stockFilter === "inStock") {
+          matchesStock = product.stock_no > 10;
+        } else if (stockFilter === "lowStock") {
+          matchesStock = product.stock_no > 0 && product.stock_no <= 10;
+        } else if (stockFilter === "outOfStock") {
+          matchesStock = product.stock_no === 0;
+        }
 
-    return matchesSearch && matchesBrand && matchesStock;
-  });
+        return matchesSearch && matchesBrand && matchesStock;
+      }),
+    [products, searchQuery, selectedBrand, stockFilter],
+  );
 
   const statsTotalProducts = products.length;
-  const statsTotalValue = products.reduce((acc, p) => acc + Number(p.price) * p.stock_no, 0);
-  const statsLowStock = products.filter((p) => p.stock_no > 0 && p.stock_no <= 10).length;
-  const statsOutOfStock = products.filter((p) => p.stock_no === 0).length;
+  const statsTotalValue = useMemo(
+    () => products.reduce((acc, p) => acc + Number(p.price) * p.stock_no, 0),
+    [products],
+  );
+  const statsLowStock = useMemo(
+    () => products.filter((p) => p.stock_no > 0 && p.stock_no <= 10).length,
+    [products],
+  );
+  const statsOutOfStock = useMemo(
+    () => products.filter((p) => p.stock_no === 0).length,
+    [products],
+  );
 
   const getStockStatusClass = (stock: number) => {
     if (stock === 0) return "stock-out";
@@ -381,142 +461,228 @@ export default function ProductsPage() {
       </div>
 
       <div className="table-responsive">
-        {loading ? (
-          <div className="table-message">Loading products...</div>
-        ) : error ? (
-          <div className="table-message error">{error}</div>
-        ) : filteredProducts.length > 0 ? (
-          <table className="products-table">
-            <thead>
-               <tr>
-                 <th>ID</th>
-                 <th>Image</th>
-                 <th>Product Name</th>
-                 <th>Brand</th>
-                 <th>Price</th>
-                 <th>Size</th>
-                 <th>Color</th>
-                 <th>Stock Quantity</th>
-                 <th>Status</th>
-                 <th>Actions</th>
-               </tr>
-            </thead>
-            <tbody>
-              {filteredProducts.map((product) => (
-                 <tr key={product.id}>
-                   <td>#{product.id}</td>
-                   <td style={{ textAlign: "center" }}>
-                     {productImageMap[product.id] ? (
-                       <img
-                         src={productImageMap[product.id]}
-                         alt={product.name}
-                         style={{
-                           width: 48,
-                           height: 48,
-                           objectFit: "cover",
-                           borderRadius: 4,
-                           border: "1px solid #eee",
-                         }}
-                       />
-                     ) : (
-                       <span style={{ color: "#999", fontSize: "12px" }}>—</span>
-                     )}
-                   </td>
-                   <td className="product-name-cell">
-                    <strong>{product.name}</strong>
-                    {product.description && (
-                      <span className="product-desc">{product.description}</span>
-                    )}
-                  </td>
-                  <td>{product.brand || "—"}</td>
-                  <td className="price-cell">₹{Number(product.price).toFixed(2)}</td>
-                  <td>{product.size || "—"}</td>
-                  <td>{product.color || "—"}</td>
-
-                   <td className="stock-cell">
-                    {editingStockId === product.id ? (
-                      <div className="inline-stock-editor">
-                        <input
-                          type="number"
-                          value={tempStockValue}
-                          onChange={(e) =>
-                            setTempStockValue(parseInt(e.target.value, 10) || 0)
-                          }
-                          min="0"
-                        />
-                        <button
-                          className="stock-save-btn"
-                          onClick={() => handleSaveStockEdit(product.id)}
-                        >
-                          ✓
-                        </button>
-                        <button
-                          className="stock-cancel-btn"
-                          onClick={() => setEditingStockId(null)}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="stock-view">
-                        <span className="stock-qty">{product.stock_no}</span>
-                        <button
-                          className="quick-stock-edit-btn"
-                          title="Quick update stock"
-                          onClick={() => handleStartStockEdit(product)}
-                        >
-                          ✎
-                        </button>
-                      </div>
-                    )}
-                  </td>
-
-                  <td>
-                    <span
-                      className={`status-badge ${getStockStatusClass(
-                        product.stock_no
-                      )}`}
-                    >
-                      {getStockStatusText(product.stock_no)}
-                    </span>
-                   </td>
-
-                   <td className="actions-cell">
-                    {canManageProducts && (
-                      <>
-                        <button
-                          className="action-btn edit-btn"
-                          onClick={() => handleOpenEditModal(product)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="action-btn delete-btn"
-                          onClick={() =>
-                            handleDeleteClick(product.id, product.name, product.stock_no)
-                          }
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
-                  </td>
+        {(() => {
+          if (loading) {
+            return <div className="table-message">Loading products...</div>;
+          }
+          if (error) {
+            return <div className="table-message error">{error}</div>;
+          }
+          if (filteredProducts.length === 0) {
+            return (
+              <div className="table-message">
+                No products match the selected filters.
+              </div>
+            );
+          }
+          return (
+            <table className="products-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Image</th>
+                  <th>Product Name</th>
+                  <th>Brand</th>
+                  <th>Price</th>
+                  <th>Size</th>
+                  <th>Color</th>
+                  <th>Stock Quantity</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <div className="table-message empty">
-            No products match the selected filters.
-          </div>
-        )}
+              </thead>
+              <tbody>
+                {filteredProducts.map((product) => (
+                  <tr key={product.id}>
+                    <td>#{product.id}</td>
+                    <td style={{ textAlign: "center" }}>
+                      {productImageMap[product.id] ? (
+                        <img
+                          src={productImageMap[product.id]}
+                          alt={product.name}
+                          style={{
+                            width: 48,
+                            height: 48,
+                            objectFit: "cover",
+                            borderRadius: 4,
+                            border: "1px solid #eee",
+                          }}
+                        />
+                      ) : (
+                        <span style={{ color: "#999", fontSize: "12px" }}>
+                          —
+                        </span>
+                      )}
+                    </td>
+                    <td className="product-name-cell">
+                      <strong>{product.name}</strong>
+                      {product.description && (
+                        <span className="product-desc">
+                          {product.description}
+                        </span>
+                      )}
+                    </td>
+                    <td>{product.brand || "—"}</td>
+                    <td className="price-cell">
+                      ₹{Number(product.price).toFixed(2)}
+                    </td>
+                    <td>{product.size || "—"}</td>
+                    <td>{product.color || "—"}</td>
+
+                    <td className="stock-cell">
+                      {editingStockId === product.id ? (
+                        <div className="inline-stock-editor">
+                          <input
+                            type="number"
+                            value={tempStockValue}
+                            onChange={(e) =>
+                              setTempStockValue(
+                                Number.parseInt(e.target.value, 10) || 0,
+                              )
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleSaveStockEdit(product.id);
+                              } else if (e.key === "Escape") {
+                                setEditingStockId(null);
+                              }
+                            }}
+                            min="0"
+                          />
+                          <button
+                            className="stock-save-btn"
+                            onClick={() => handleSaveStockEdit(product.id)}
+                          >
+                            ✓
+                          </button>
+                          <button
+                            className="stock-cancel-btn"
+                            onClick={() => setEditingStockId(null)}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="stock-view">
+                          <span className="stock-qty">{product.stock_no}</span>
+                          <button
+                            className="quick-stock-edit-btn"
+                            title="Quick update stock"
+                            onClick={() => handleStartStockEdit(product)}
+                          >
+                            ✎
+                          </button>
+                        </div>
+                      )}
+                    </td>
+
+                    <td>
+                      <span
+                        className={`status-badge ${getStockStatusClass(
+                          product.stock_no,
+                        )}`}
+                      >
+                        {getStockStatusText(product.stock_no)}
+                      </span>
+                    </td>
+
+                    <td className="actions-cell">
+                      {canManageProducts && (
+                        <>
+                          <button
+                            className="action-btn edit-btn"
+                            onClick={() => handleOpenEditModal(product)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="action-btn delete-btn"
+                            onClick={() =>
+                              handleDeleteClick(
+                                product.id,
+                                product.name,
+                                product.stock_no,
+                              )
+                            }
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          );
+        })()}
       </div>
 
+      {deleteConfirm && (
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) cancelDelete();
+          }}
+          onKeyDown={(e) => e.key === "Escape" && cancelDelete()}
+          tabIndex={0}
+          role="button"
+          aria-label="Cancel delete"
+        >
+          <div
+            className="modal-content"
+            style={{ maxWidth: "400px", textAlign: "center" }}
+          >
+            <h2 style={{ marginBottom: "8px" }}>Confirm Delete</h2>
+            <p style={{ marginBottom: "24px", color: "#555" }}>
+              Are you sure you want to delete{" "}
+              <strong>"{deleteConfirm.name}"</strong>?
+              <br />
+              <span style={{ color: "#888", fontSize: "13px" }}>
+                This action cannot be undone.
+              </span>
+            </p>
+            <div
+              style={{ display: "flex", gap: "12px", justifyContent: "center" }}
+            >
+              <button
+                className="btn-cancel"
+                onClick={cancelDelete}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-submit"
+                style={{ background: "#dc3545" }}
+                onClick={confirmDeleteProduct}
+                type="button"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isModalOpen && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              handleCloseModal();
+            }
+          }}
+          onKeyDown={(e) => e.key === "Escape" && handleCloseModal()}
+          tabIndex={0}
+          role="button"
+          aria-label="Close modal"
+        >
+          <dialog className="modal-content" open>
             <div className="modal-header">
-              <h2>{modalMode === "add" ? "Add New Product" : "Edit Product"}</h2>
+              <h2>
+                {modalMode === "add" ? "Add New Product" : "Edit Product"}
+              </h2>
               <button className="modal-close-btn" onClick={handleCloseModal}>
                 ×
               </button>
@@ -528,10 +694,9 @@ export default function ProductsPage() {
                   <input
                     type="text"
                     id="name"
+                    name="name"
                     value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
+                    onChange={handleFormChange}
                     placeholder="Wireless Headphones"
                     required
                   />
@@ -541,56 +706,65 @@ export default function ProductsPage() {
                   <label htmlFor="description">Description</label>
                   <textarea
                     id="description"
+                    name="description"
                     value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
+                    onChange={handleFormChange}
                     placeholder="High-quality bluetooth headphones with active noise cancellation."
                     rows={3}
                   />
-                 </div>
+                </div>
 
-                 <div className="form-group full-width">
-                   <label htmlFor="image_url">Image URL (paste link - single image)</label>
-                   <input
-                     type="text"
-                     id="image_url"
-                     value={formData.image_url}
-                     onChange={(e) =>
-                       setFormData({ ...formData, image_url: e.target.value })
-                     }
-                     placeholder="https://example.com/your-product-image.jpg"
-                   />
-                   {formData.image_url && (
-                     <div style={{ marginTop: "8px" }}>
-                       <img
-                         src={formData.image_url}
-                         alt="Preview"
-                         style={{
-                           maxWidth: "120px",
-                           maxHeight: "120px",
-                           objectFit: "cover",
-                           borderRadius: "4px",
-                           border: "1px solid #ddd",
-                         }}
-                         onError={(e) => {
-                           (e.currentTarget as HTMLImageElement).style.display = "none";
-                         }}
-                       />
-                     </div>
-                   )}
-                 </div>
+                <div className="form-group full-width">
+                  <label htmlFor="image_url">
+                    Image URL (paste link - single image)
+                  </label>
+                  <input
+                    type="text"
+                    id="image_url"
+                    name="image_url"
+                    value={formData.image_url}
+                    onChange={handleFormChange}
+                    placeholder="https://example.com/your-product-image.jpg"
+                  />
+                  {formData.image_url && (
+                    <div style={{ marginTop: "8px" }}>
+                      <img
+                        src={formData.image_url}
+                        alt="Preview"
+                        style={{
+                          maxWidth: "120px",
+                          maxHeight: "120px",
+                          objectFit: "cover",
+                          borderRadius: "4px",
+                          border: "1px solid #ddd",
+                          display: "block",
+                        }}
+                        onError={(e) => {
+                          const target = e.currentTarget as HTMLImageElement;
+                          target.style.display = "none";
+                          // Show error message after the image
+                          const errorDiv = document.createElement("div");
+                          errorDiv.className = "image-error-msg";
+                          errorDiv.textContent =
+                            "⚠️ Failed to load image. Check the URL.";
+                          errorDiv.style.cssText =
+                            "color: #dc3545; font-size: 12px; margin-top: 4px;";
+                          target.parentElement?.appendChild(errorDiv);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
 
-                 <div className="form-group">
-                   <label htmlFor="price">Price (₹) *</label>
+                <div className="form-group">
+                  <label htmlFor="price">Price (₹) *</label>
                   <input
                     type="number"
                     id="price"
+                    name="price"
                     step="0.01"
                     value={formData.price}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price: e.target.value })
-                    }
+                    onChange={handleFormChange}
                     placeholder="1999.00"
                     required
                   />
@@ -601,10 +775,9 @@ export default function ProductsPage() {
                   <input
                     type="number"
                     id="stock_no"
+                    name="stock_no"
                     value={formData.stock_no}
-                    onChange={(e) =>
-                      setFormData({ ...formData, stock_no: e.target.value })
-                    }
+                    onChange={handleFormChange}
                     placeholder="50"
                     required
                   />
@@ -615,10 +788,9 @@ export default function ProductsPage() {
                   <input
                     type="text"
                     id="brand"
+                    name="brand"
                     value={formData.brand}
-                    onChange={(e) =>
-                      setFormData({ ...formData, brand: e.target.value })
-                    }
+                    onChange={handleFormChange}
                     placeholder="Sony"
                   />
                 </div>
@@ -628,10 +800,9 @@ export default function ProductsPage() {
                   <input
                     type="text"
                     id="color"
+                    name="color"
                     value={formData.color}
-                    onChange={(e) =>
-                      setFormData({ ...formData, color: e.target.value })
-                    }
+                    onChange={handleFormChange}
                     placeholder="Black"
                   />
                 </div>
@@ -641,10 +812,9 @@ export default function ProductsPage() {
                   <input
                     type="text"
                     id="size"
+                    name="size"
                     value={formData.size}
-                    onChange={(e) =>
-                      setFormData({ ...formData, size: e.target.value })
-                    }
+                    onChange={handleFormChange}
                     placeholder="M"
                   />
                 </div>
@@ -663,7 +833,7 @@ export default function ProductsPage() {
                 </button>
               </div>
             </form>
-          </div>
+          </dialog>
         </div>
       )}
     </div>

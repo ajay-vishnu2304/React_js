@@ -19,8 +19,8 @@ export const decodeToken = (token: string): JWTPayload | null => {
 
 export const isTokenExpired = (token: string): boolean => {
   const decoded = decodeToken(token);
-  if (!decoded || !decoded.exp) return true;
-  
+  if (!decoded?.exp) return true;
+
   const currentTime = Math.floor(Date.now() / 1000);
   return decoded.exp < currentTime;
 };
@@ -60,5 +60,14 @@ export const getHomePathForRole = (role: string | null): string => {
       return "/product-manager";
     default:
       return "/dashboard";
+  }
+};
+
+export const logout = (
+  navigate?: (path: string, options?: { replace?: boolean }) => void,
+): void => {
+  localStorage.removeItem("token");
+  if (navigate) {
+    navigate("/login", { replace: true });
   }
 };

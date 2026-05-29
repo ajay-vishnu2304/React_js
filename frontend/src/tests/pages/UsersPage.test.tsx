@@ -1,7 +1,16 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import UsersPage from "../../pages/users/UsersPage";
+import UsersPage from "../../pages/Users/UsersPage";
 import "@testing-library/jest-dom";
+
+jest.mock("react-hot-toast", () => ({
+  __esModule: true,
+  default: {
+    success: jest.fn(),
+    error: jest.fn(),
+  },
+}));
 
 jest.mock("../../services/jwtUtils", () => ({
   hasRole: jest.fn(),
@@ -13,6 +22,7 @@ jest.mock("../../services/apiService", () => ({
   deleteUser: jest.fn(),
 }));
 
+import toast from "react-hot-toast";
 import { hasRole } from "../../services/jwtUtils";
 import {
   getUsers,
@@ -22,7 +32,6 @@ import {
 
 describe("UsersPage", () => {
   let consoleErrorSpy: jest.SpyInstance;
-  let alertSpy: jest.SpyInstance;
   let confirmSpy: jest.SpyInstance;
 
   const mockUsers = [
@@ -54,16 +63,16 @@ describe("UsersPage", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (toast.success as jest.Mock).mockClear();
+    (toast.error as jest.Mock).mockClear();
     localStorage.clear();
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-    alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
     confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
     (hasRole as jest.Mock).mockReturnValue(true);
   });
 
   afterEach(() => {
     consoleErrorSpy.mockRestore();
-    alertSpy.mockRestore();
     confirmSpy.mockRestore();
   });
 
@@ -123,6 +132,7 @@ describe("UsersPage", () => {
   });
 
   test("filters users by role", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getUsers as jest.Mock).mockResolvedValue(mockUsers);
@@ -139,7 +149,7 @@ describe("UsersPage", () => {
     });
 
     const roleFilter = screen.getByDisplayValue("All Roles");
-    fireEvent.change(roleFilter, { target: { value: "admin" } });
+    await user.selectOptions(roleFilter, "admin");
 
     await waitFor(() => {
       expect(screen.queryByText("John Doe")).not.toBeInTheDocument();
@@ -184,6 +194,7 @@ describe("UsersPage", () => {
   });
 
   test("opens add user modal", async () => {
+    const user = userEvent.setup();
     (hasRole as jest.Mock).mockReturnValue(true);
     localStorage.setItem("token", "fake-token");
     
@@ -199,7 +210,7 @@ describe("UsersPage", () => {
       expect(screen.getByText("Add User")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Add User"));
+    await user.click(screen.getByText("Add User"));
 
     await waitFor(() => {
       expect(screen.getByText("Add New User")).toBeInTheDocument();
@@ -207,6 +218,7 @@ describe("UsersPage", () => {
   });
 
   test("closes modal when cancel button is clicked", async () => {
+    const user = userEvent.setup();
     (hasRole as jest.Mock).mockReturnValue(true);
     localStorage.setItem("token", "fake-token");
     
@@ -222,13 +234,13 @@ describe("UsersPage", () => {
       expect(screen.getByText("Add User")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Add User"));
+    await user.click(screen.getByText("Add User"));
     
     await waitFor(() => {
       expect(screen.getByText("Add New User")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Cancel"));
+    await user.click(screen.getByText("Cancel"));
 
     await waitFor(() => {
       expect(screen.queryByText("Add New User")).not.toBeInTheDocument();
@@ -236,6 +248,7 @@ describe("UsersPage", () => {
   });
 
   test("adds new user through modal", async () => {
+    const user = userEvent.setup();
     (hasRole as jest.Mock).mockReturnValue(true);
     localStorage.setItem("token", "fake-token");
     
@@ -251,25 +264,30 @@ describe("UsersPage", () => {
       expect(screen.getByText("Add User")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Add User"));
+    await user.click(screen.getByText("Add User"));
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Full Name")).toBeInTheDocument();
+      expect(screen.getByText("Add New User")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Full Name"), { target: { value: "New User" } });
-    fireEvent.change(screen.getByLabelText("Email Address"), { target: { value: "newuser@example.com" } });
+    // Use getByLabelText with the exact label text from the component
+    const fullNameInput = screen.getByLabelText("Full Name");
+    const emailInput = screen.getByLabelText("Email Address");
+    
+    await user.type(fullNameInput, "New User");
+    await user.type(emailInput, "newuser@example.com");
 
-    // Use form submit for reliability
-    const form = screen.getByText("Add User", { selector: "button[type='submit']" }).closest("form");
-    if (form) fireEvent.submit(form);
+    // Click the submit button within the modal
+    const modal = screen.getByRole('dialog');
+    await user.click(within(modal).getByRole('button', { name: 'Add User' }));
 
     await waitFor(() => {
-      expect(screen.getByText("New User")).toBeInTheDocument();
+      expect(screen.getByText(/New User/)).toBeInTheDocument();
     });
   });
 
   test("validates form fields before adding user", async () => {
+    const user = userEvent.setup();
     (hasRole as jest.Mock).mockReturnValue(true);
     localStorage.setItem("token", "fake-token");
     
@@ -285,22 +303,23 @@ describe("UsersPage", () => {
       expect(screen.getByText("Add User")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Add User"));
+    await user.click(screen.getByText("Add User"));
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Full Name")).toBeInTheDocument();
+      expect(screen.getByText("Add New User")).toBeInTheDocument();
     });
 
-    // Try to submit empty form
-    const form = screen.getByText("Add User", { selector: "button[type='submit']" }).closest("form");
-    if (form) fireEvent.submit(form);
+    // Try to submit empty form by clicking submit button within the modal
+    const modal = screen.getByRole('dialog');
+    await user.click(within(modal).getByRole('button', { name: 'Add User' }));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith("Please fill in all fields.");
+      expect(toast.error).toHaveBeenCalledWith("Please fill in all fields.");
     });
   });
 
   test("changes user role successfully", async () => {
+    const user = userEvent.setup();
     (hasRole as jest.Mock).mockReturnValue(true);
     localStorage.setItem("token", "fake-token");
     
@@ -319,7 +338,7 @@ describe("UsersPage", () => {
 
     const roleDropdowns = document.querySelectorAll('.role-dropdown');
     expect(roleDropdowns.length).toBeGreaterThan(0);
-    fireEvent.change(roleDropdowns[0], { target: { value: "admin" } });
+    await user.selectOptions(roleDropdowns[0], "admin");
 
     await waitFor(() => {
       expect(updateUserRole).toHaveBeenCalledWith(
@@ -351,6 +370,7 @@ describe("UsersPage", () => {
   });
 
   test("deletes user successfully", async () => {
+    const user = userEvent.setup();
     (hasRole as jest.Mock).mockReturnValue(true);
     localStorage.setItem("token", "fake-token");
     
@@ -368,14 +388,21 @@ describe("UsersPage", () => {
     });
 
     const deleteButtons = screen.getAllByText("Delete");
-    fireEvent.click(deleteButtons[0]);
+    await user.click(deleteButtons[0]);
+
+    // Modal opens with confirmation - click Delete button in modal-actions to confirm
+    const confirmDeleteButton = document.querySelector(
+      '.modal-actions button.btn-delete'
+    ) as HTMLButtonElement;
+    await user.click(confirmDeleteButton);
 
     await waitFor(() => {
-      expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining("John Doe"));
+      expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("John Doe"));
     });
   });
 
   test("handles delete user error", async () => {
+    const user = userEvent.setup();
     (hasRole as jest.Mock).mockReturnValue(true);
     localStorage.setItem("token", "fake-token");
     
@@ -393,14 +420,21 @@ describe("UsersPage", () => {
     });
 
     const deleteButtons = screen.getAllByText("Delete");
-    fireEvent.click(deleteButtons[0]);
+    await user.click(deleteButtons[0]);
+
+    // Modal opens with confirmation - click Delete button in modal-actions to trigger error
+    const confirmDeleteButton = document.querySelector(
+      '.modal-actions button.btn-delete'
+    ) as HTMLButtonElement;
+    await user.click(confirmDeleteButton);
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalled();
     });
   });
 
   test("handles role change error", async () => {
+    const user = userEvent.setup();
     (hasRole as jest.Mock).mockReturnValue(true);
     localStorage.setItem("token", "fake-token");
     
@@ -419,10 +453,10 @@ describe("UsersPage", () => {
 
     const roleDropdowns = document.querySelectorAll('.role-dropdown');
     expect(roleDropdowns.length).toBeGreaterThan(0);
-    fireEvent.change(roleDropdowns[0], { target: { value: "admin" } });
+    await user.selectOptions(roleDropdowns[0], "admin");
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith("Failed to update role. Please try again.");
+      expect(toast.error).toHaveBeenCalledWith("Failed to update role. Please try again.");
     });
   });
 
@@ -442,6 +476,7 @@ describe("UsersPage", () => {
   });
 
   test("shows no users message when filter returns empty", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getUsers as jest.Mock).mockResolvedValue(mockUsers);
@@ -457,13 +492,13 @@ describe("UsersPage", () => {
     });
 
     const roleFilter = screen.getByDisplayValue("All Roles");
-    fireEvent.change(roleFilter, { target: { value: "product_manager" } });
+    await user.selectOptions(roleFilter, "product_manager");
 
     await waitFor(() => {
       expect(screen.getByText("Bob Wilson")).toBeInTheDocument();
     });
 
-    fireEvent.change(roleFilter, { target: { value: "admin" } });
+    await user.selectOptions(roleFilter, "admin");
 
     await waitFor(() => {
       expect(screen.queryByText("John Doe")).not.toBeInTheDocument();

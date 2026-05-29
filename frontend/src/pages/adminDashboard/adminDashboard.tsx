@@ -1,28 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Sidebar from "../../components/SideBar/SideBar";
 import NavBar from "../../components/NavBar/NavBar";
-import "./adminDashboard.css";
+import "./AdminDashboard.css";
 import StatsCard from "../../components/StatsCard/StatsCard";
 import RecentOrders from "../../components/Tables/RecentOrders";
-import UsersPage from "../users/UsersPage";
-import OrdersPage from "../orders/OrdersPage";
-import ProductsPage from "../products/ProductsPage";
-import { getAdminDashboardData } from "../../services/apiService";
+import UsersPage from "../Users/UsersPage";
+import OrdersPage from "../Orders/OrdersPage";
+import ProductsPage from "../Products/ProductsPage";
+import { getAdminDashboardData, type AdminDashboardData } from "../../services/apiService";
 import { hasRole } from "../../services/jwtUtils";
-
-export interface AdminDashboardData {
-  users: unknown[];
-  products: unknown[];
-  orders: unknown[];
-  categories: unknown[];
-  carts: unknown[];
-  coupons: unknown[];
-  payments: unknown[];
-  productCategories: unknown[];
-  reviews: unknown[];
-  productImages: unknown[];
-}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -34,19 +21,22 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!token || !isAdmin) {
       navigate("/login");
-      return;
     }
   }, [token, isAdmin, navigate]);
 
   const rawTab = searchParams.get("tab");
-  const activeTab =
-    rawTab === "products"
-      ? "Products"
-      : rawTab === "orders"
-      ? "Orders"
-      : rawTab === "users"
-      ? "Users"
-      : "Dashboard";
+  const activeTab = (() => {
+    switch (rawTab) {
+      case "products":
+        return "Products";
+      case "orders":
+        return "Orders";
+      case "users":
+        return "Users";
+      default:
+        return "Dashboard";
+    }
+  })();
 
   const [dashboardData, setDashboardData] = useState<AdminDashboardData | null>(
     null,
@@ -55,23 +45,30 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal: AbortSignal) => {
     if (!token || !isAdmin) {
-      setError("Unauthorized");
-      setLoading(false);
+      if (!signal.aborted) {
+        setError("Unauthorized");
+        setLoading(false);
+      }
       return;
     }
     try {
-      const data = await getAdminDashboardData(token);
-      console.log("Dashboard API Response:", data);
-      setDashboardData(data as AdminDashboardData);
+      const data = await getAdminDashboardData(token, signal);
+      if (!signal.aborted) {
+        setDashboardData(data as AdminDashboardData);
+      }
     } catch (err) {
-      console.error("Dashboard data fetch error:", err);
-      setError(
-        `Failed to load dashboard data: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      if (!signal.aborted) {
+        console.error("Dashboard data fetch error:", err);
+        setError(
+          `Failed to load dashboard data: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [token, isAdmin]);
 
@@ -80,41 +77,48 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchData();
+    const controller = new AbortController();
+    let isMounted = true;
+
+    if (isMounted) {
+      fetchData(controller.signal);
+    }
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, [fetchData, refreshTrigger]);
 
   const handleMenuToggle = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  const calculateStats = () => {
+  const stats = useMemo(() => {
     if (!dashboardData) return null;
 
     const orders = dashboardData.orders || [];
-    const totalRevenue = orders.reduce((sum: number, order: unknown) => {
-      const amount = parseFloat((order as Record<string, unknown>).total_amount as string) || 0;
+    const totalRevenue = orders.reduce((sum: number, order) => {
+      const amount = typeof order.total_amount === 'string'
+        ? Number.parseFloat(order.total_amount)
+        : Number(order.total_amount ?? 0);
       return sum + amount;
     }, 0);
     return {
-      revenue: `₹${totalRevenue.toLocaleString("en-IN", {
+      revenue: `₹${String(totalRevenue.toLocaleString("en-IN", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-      })}`,
+      }))}`,
       users: (dashboardData.users || []).length.toString(),
       products: (dashboardData.products || []).length.toString(),
       orders: orders.length.toString(),
     };
-  };
-
-  const stats = calculateStats();
+  }, [dashboardData]);
 
   const renderContent = () => {
     if (loading) return <div>Loading...</div>;
     if (error) return <div>{error}</div>;
     if (!dashboardData) return null;
-
-    console.log("Dashboard data being rendered:", dashboardData);
 
     switch (activeTab) {
       case "Users":
@@ -131,11 +135,11 @@ export default function AdminDashboard() {
 
             {stats ? (
               <div className="stats-grid">
-                <StatsCard
-                  title="Total Revenue"
-                  value={stats.revenue || "₹0"}
-                  percentage="Calculated from total orders"
-                />
+<StatsCard
+                   title="Total Revenue"
+                   value={stats.revenue}
+                   percentage="Calculated from total orders"
+                 />
 
                 <StatsCard
                   title="Users"
@@ -161,8 +165,8 @@ export default function AdminDashboard() {
               </div>
             )}
             <RecentOrders
-              orders={dashboardData.orders as Array<{id: number, user_id: number, total_amount: number, order_status: string, created_at: string}> || []}
-              users={dashboardData.users as Array<Record<string, unknown>> || []}
+              orders={dashboardData.orders || []}
+              users={dashboardData.users || []}
             />
           </>
         );

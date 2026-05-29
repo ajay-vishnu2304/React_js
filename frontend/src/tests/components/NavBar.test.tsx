@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import NavBar from "../../components/NavBar/NavBar";
 import "@testing-library/jest-dom";
@@ -33,7 +34,8 @@ describe("NavBar Component", () => {
     expect(menuButton).toBeInTheDocument();
   });
 
-  test("toggles mobile menu when button is clicked", () => {
+  test("toggles mobile menu when button is clicked", async () => {
+    const user = userEvent.setup();
     render(
       <MemoryRouter>
         <NavBar onMenuToggle={mockOnMenuToggle} />
@@ -41,12 +43,13 @@ describe("NavBar Component", () => {
     );
 
     const menuButton = screen.getByLabelText("Toggle menu");
-    fireEvent.click(menuButton);
+    await user.click(menuButton);
 
     expect(mockOnMenuToggle).toHaveBeenCalledTimes(1);
   });
 
-  test("toggles mobile menu state on multiple clicks", () => {
+  test("toggles mobile menu state on multiple clicks", async () => {
+    const user = userEvent.setup();
     render(
       <MemoryRouter>
         <NavBar onMenuToggle={mockOnMenuToggle} />
@@ -56,9 +59,9 @@ describe("NavBar Component", () => {
     const menuButton = screen.getByLabelText("Toggle menu");
     
     // Click multiple times
-    fireEvent.click(menuButton);
-    fireEvent.click(menuButton);
-    fireEvent.click(menuButton);
+    await user.click(menuButton);
+    await user.click(menuButton);
+    await user.click(menuButton);
 
     expect(mockOnMenuToggle).toHaveBeenCalledTimes(3);
   });
@@ -90,7 +93,8 @@ describe("NavBar Component", () => {
     expect(profileImage).toHaveAttribute("src", "https://i.pravatar.cc/40");
   });
 
-  test("works without onMenuToggle prop", () => {
+  test("works without onMenuToggle prop", async () => {
+    const user = userEvent.setup();
     render(
       <MemoryRouter>
         <NavBar />
@@ -100,7 +104,7 @@ describe("NavBar Component", () => {
     const menuButton = screen.getByLabelText("Toggle menu");
     
     // Should not throw error when clicked without onMenuToggle
-    expect(() => fireEvent.click(menuButton)).not.toThrow();
+    await expect(user.click(menuButton)).resolves.not.toThrow();
   });
 
   test("renders all navbar elements", () => {

@@ -1,16 +1,20 @@
-import { Navigate, Outlet } from "react-router-dom";
-import { isValidToken, hasAnyRole } from "../../services/jwtUtils";
+import { Navigate, Outlet, useNavigate } from "react-router-dom";
+import { isValidToken, hasAnyRole, logout } from "../../services/jwtUtils";
 
 interface ProtectedRouteProps {
-  children?: React.ReactNode;
-  allowedRoles?: string[];
+  readonly children?: React.ReactNode;
+  readonly allowedRoles?: string[];
 }
 
-export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+export default function ProtectedRoute({
+  children,
+  allowedRoles,
+}: ProtectedRouteProps) {
+  const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
   if (!token || !isValidToken(token)) {
-    localStorage.removeItem("token");
+    logout(navigate);
     return <Navigate to="/login" replace />;
   }
 

@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import UserNavBar from "../../components/UserNavBar/UserNavBar";
 import "@testing-library/jest-dom";
@@ -28,7 +29,8 @@ describe("UserNavBar Component", () => {
     expect(screen.getByText("2")).toBeInTheDocument(); // cart badge
   });
 
-  test("toggles profile dropdown and calls logout on click", () => {
+  test("toggles profile dropdown and calls logout on click", async () => {
+    const user = userEvent.setup();
     render(
       <MemoryRouter>
         <UserNavBar />
@@ -36,13 +38,13 @@ describe("UserNavBar Component", () => {
     );
 
     const profile = screen.getByLabelText("Profile");
-    fireEvent.click(profile);
+    await user.click(profile);
 
     const logoutBtn = screen.getByText("Logout");
     expect(logoutBtn).toBeInTheDocument();
 
-    fireEvent.click(logoutBtn);
+    await user.click(logoutBtn);
     expect(localStorage.getItem("token")).toBeNull();
-    expect(mockNavigate).toHaveBeenCalledWith("/login");
+    expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
   });
 });

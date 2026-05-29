@@ -1,6 +1,7 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import ProductManagerDashboard from "../../pages/productManagerDashboard/ProductManagerDashboard";
+import ProductManagerDashboard from "../../pages/ProductManagerDashboard/ProductManagerDashboard";
 import "@testing-library/jest-dom";
 
 const mockNavigate = jest.fn();
@@ -127,7 +128,8 @@ describe("ProductManagerDashboard", () => {
     expect(screen.getByText("ADMIN")).toBeInTheDocument(); // Navbar profile
   });
 
-  test("toggles sidebar when menu button is clicked", () => {
+  test("toggles sidebar when menu button is clicked", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
 
     render(
@@ -137,7 +139,7 @@ describe("ProductManagerDashboard", () => {
     );
 
     const menuButton = screen.getByLabelText("Toggle menu");
-    fireEvent.click(menuButton);
+    await user.click(menuButton);
   });
 
   test("renders RecentOrders component", () => {
@@ -232,7 +234,7 @@ describe("ProductManagerDashboard", () => {
     );
 
     // Sidebar should be rendered with Dashboard as active tab by default
-    expect(screen.getByText("Dashboard")).toHaveClass("active");
+    expect(screen.getByText("Dashboard").closest("li")).toHaveClass("active");
   });
 
   test("navbar receives correct props", () => {

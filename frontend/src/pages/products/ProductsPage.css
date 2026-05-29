@@ -23,7 +23,7 @@
 
 .add-product-btn {
   padding: 0.6rem 1.5rem;
-  background-color: #28a745;
+  background-color: #1e7e34;
   color: white;
   border: none;
   border-radius: 4px;
@@ -229,7 +229,7 @@
 
 .stock-save-btn {
   padding: 0.25rem 0.5rem;
-  background-color: #28a745;
+  background-color: #1e7e34;
   color: white;
   border: none;
   border-radius: 4px;
@@ -260,9 +260,9 @@
 }
 
 .stock-low {
-  background-color: #fff3cd;
-  color: #856404;
-}
+   background-color: #fff3cd;
+   color: #664d03;
+ }
 
 .stock-out {
   background-color: #f8d7da;
@@ -339,6 +339,16 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   max-height: 90vh;
   overflow-y: auto;
+  position: relative;
+  margin: auto;
+  border: none;
+}
+
+/* Override default dialog positioning */
+.modal-content[open] {
+  display: block;
+  position: relative;
+  margin: auto;
 }
 
 .modal-header {
@@ -417,7 +427,7 @@
 
 .btn-submit {
   padding: 0.5rem 1.5rem;
-  background-color: #007bff;
+  background-color: #0056b3;
   color: white;
   border: none;
   border-radius: 4px;

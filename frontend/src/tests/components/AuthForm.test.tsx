@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AuthForm from "../../components/AuthForm/AuthForm";
 import "@testing-library/jest-dom";
@@ -48,27 +49,30 @@ describe("AuthForm Component", () => {
   });
 
   test("validation: shows error for invalid password strength during registration", async () => {
+    const user = userEvent.setup();
     render(
       <MemoryRouter>
         <AuthForm title="Signup" buttonText="Create Account" isSignup={true} />
       </MemoryRouter>
     );
 
-    fireEvent.change(screen.getByLabelText("Username"), { target: { value: "john_doe" } });
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "john@example.com" } });
-    fireEvent.change(screen.getByLabelText("First Name"), { target: { value: "John" } });
-    fireEvent.change(screen.getByLabelText("Date of Birth"), { target: { value: "1995-05-15" } });
-    fireEvent.change(screen.getByLabelText("Phone Number"), { target: { value: "1234567890" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "weak" } });
+    // Type values and blur to activate validation
+    await user.type(screen.getByLabelText("Username"), "john_doe");
+    await user.type(screen.getByLabelText("Email"), "john@example.com");
+    await user.type(screen.getByLabelText("First Name"), "John");
+    await user.type(screen.getByLabelText("Date of Birth"), "1995-05-15");
+    await user.type(screen.getByLabelText("Phone Number"), "1234567890");
+    await user.type(screen.getByLabelText("Password"), "weak");
 
-    fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
+    await user.click(screen.getByRole("button", { name: "Create Account" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Password must be at least 6 characters")).toBeInTheDocument();
+      expect(screen.getByText("Password must be at least 8 characters long")).toBeInTheDocument();
     });
   });
 
   test("submits login and redirects on success", async () => {
+    const user = userEvent.setup();
     const mockToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsInVzZXJuYW1lIjoidGVzdCIsImVtYWlsIjoiam9obkBleGFtcGxlLmNvbSIsInJvbGUiOiJ1c2VyIn0.signature";
     ((globalThis as any).fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
@@ -83,10 +87,10 @@ describe("AuthForm Component", () => {
       </MemoryRouter>
     );
 
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "john@example.com" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "Password@123" } });
+    await user.type(screen.getByLabelText("Email"), "john@example.com");
+    await user.type(screen.getByLabelText("Password"), "Password@123");
 
-    fireEvent.click(screen.getByRole("button", { name: "Login" }));
+    await user.click(screen.getByRole("button", { name: "Login" }));
 
     await waitFor(() => {
       expect((globalThis as any).fetch).toHaveBeenCalledWith(
@@ -110,6 +114,7 @@ describe("AuthForm Component", () => {
   });
 
   test("displays API error response on failure", async () => {
+    const user = userEvent.setup();
     ((globalThis as any).fetch as jest.Mock).mockResolvedValueOnce({
       ok: false,
       status: 401,
@@ -123,10 +128,10 @@ describe("AuthForm Component", () => {
       </MemoryRouter>
     );
 
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "john@example.com" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "Password@123" } });
+    await user.type(screen.getByLabelText("Email"), "john@example.com");
+    await user.type(screen.getByLabelText("Password"), "Password@123");
 
-    fireEvent.click(screen.getByRole("button", { name: "Login" }));
+    await user.click(screen.getByRole("button", { name: "Login" }));
 
     await waitFor(() => {
       expect(screen.getByText("Invalid credentials")).toBeInTheDocument();

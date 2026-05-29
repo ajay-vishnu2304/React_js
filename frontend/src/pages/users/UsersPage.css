@@ -33,7 +33,7 @@
 
 .add-user-btn {
   padding: 0.5rem 1.5rem;
-  background-color: #007bff;
+  background-color: #0056b3;
   color: white;
   border: none;
   border-radius: 4px;
@@ -106,14 +106,14 @@
 }
 
 .role-product-manager {
-  background-color: #fd7e14;
-  color: white;
+  background-color: #e67e22;
+  color: #2c3e50;
 }
 
 .role-user {
-  background-color: #6c757d;
-  color: white;
-}
+   background-color: #3d4247;
+   color: white;
+ }
 
 .actions-cell {
   display: flex;
@@ -263,7 +263,7 @@
 
 .btn-submit {
   padding: 0.75rem 1.5rem;
-  background-color: #007bff;
+  background-color: #0056b3;
   border: none;
   border-radius: 6px;
   color: white;
@@ -277,6 +277,50 @@
 
 .btn-submit:hover {
   background-color: #0056b3;
+}
+
+.delete-modal {
+  max-width: 400px;
+}
+
+.delete-modal-body {
+  padding: 1rem 0;
+}
+
+.delete-modal-body p {
+  margin: 0.5rem 0;
+  color: #555;
+  font-size: 1rem;
+}
+
+.delete-warning {
+  color: #dc3545 !important;
+  font-size: 0.9rem;
+}
+
+.btn-delete {
+  padding: 0.75rem 1.5rem;
+  background-color: #dc3545;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-delete:hover {
+  background-color: #c82333;
+}
+
+.delete-modal .btn-cancel {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+}
+
+.delete-modal .btn-cancel:hover {
+  background-color: #5a6268;
+  color: white;
 }
 
 @media (max-width: 768px) {

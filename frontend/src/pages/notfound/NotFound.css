@@ -37,7 +37,7 @@
 .notfound-link {
     margin-top: clamp(15px, 3vw, 25px);
     padding: clamp(10px, 2vw, 15px) clamp(20px, 4vw, 30px);
-    background-color: #1890ff;
+    background-color: #0050b3;
     color: white;
     text-decoration: none;
     border-radius: 4px;

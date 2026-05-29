@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import Signup from "../../pages/auth/Signup";
+import Signup from "../../pages/Auth/Signup";
 import * as jwtUtils from "../../services/jwtUtils";
 import "@testing-library/jest-dom";
 

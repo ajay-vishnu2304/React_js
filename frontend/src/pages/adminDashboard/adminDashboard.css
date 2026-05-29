@@ -1,4 +1,5 @@
-file.admin-dashboard {
+/* Admin Dashboard Styles */
+.admin-dashboard {
   display: flex;
   min-height: 100vh;
   width: 100%;

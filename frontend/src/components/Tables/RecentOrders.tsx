@@ -8,21 +8,31 @@ interface Order {
   created_at: string;
 }
 
-interface RecentOrdersProps {
-  orders: Order[];
-  users?: Array<Record<string, unknown>>;
+interface UserData {
+  id: number;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
 }
 
-export default function RecentOrders({ orders, users }: RecentOrdersProps) {
+interface RecentOrdersProps {
+  readonly orders: Order[];
+  readonly users?: UserData[];
+}
+
+export default function RecentOrders({ orders, users }: Readonly<RecentOrdersProps>) {
   const recentOrders = orders ? orders.slice(0, 5) : [];
 
-  const getCustomerName = (userId: number): string => {
+  function getCustomerName(userId: number): string {
     if (!users || users.length === 0) return `User #${userId}`;
-    const user = users.find((u) => (u as Record<string, unknown>).id === userId);
+    const user = users.find((u) => u.id === userId);
     if (!user) return `User #${userId}`;
-    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
-    return fullName || (user.username as string) || `User #${userId}`;
-  };
+    const firstName = String(user.first_name ?? "");
+    const lastName = String(user.last_name ?? "");
+    const fullName = `${firstName} ${lastName}`.trim();
+    const username = user.username ?? "";
+    return fullName || username || `User #${userId}`;
+  }
   return (
     <div className="recent-orders-container">
       <div className="table-header">
@@ -46,7 +56,7 @@ export default function RecentOrders({ orders, users }: RecentOrdersProps) {
                 <td className="order-id">#{order.id}</td>
                 <td>{getCustomerName(order.user_id)}</td>
                 <td>₹{order.total_amount}</td>
-                <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                <td>{order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}</td>
                 <td>
                   <span className={`status-badge ${order.order_status.toLowerCase()}`}>
                     {order.order_status}

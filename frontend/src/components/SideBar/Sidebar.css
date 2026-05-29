@@ -43,13 +43,27 @@
 }
 
 .nav-links li {
+   padding: 0;
+   margin-bottom: 10px;
+   border-radius: 10px;
+   cursor: pointer;
+   transition: all 0.3s ease;
+   color: #222;
+   font-weight: 500;
+ }
+
+.nav-link-btn {
+  width: 100%;
   padding: 14px 16px;
-  margin-bottom: 10px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  color: #4b5563;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
   font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 10px;
+  display: block;
 }
 
 .nav-links li:hover {
@@ -58,7 +72,7 @@
 }
 
 .nav-links li.active {
-  background-color: #3b82f6;
+  background-color: #2563eb;
   color: #ffffff;
   box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
 }

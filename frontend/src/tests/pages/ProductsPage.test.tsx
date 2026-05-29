@@ -1,9 +1,19 @@
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import ProductsPage from "../../pages/products/ProductsPage";
+import ProductsPage from "../../pages/Products/ProductsPage";
 import "@testing-library/jest-dom";
 
 const mockNavigate = jest.fn();
+
+jest.mock("react-hot-toast", () => ({
+  __esModule: true,
+  default: {
+    success: jest.fn(),
+    error: jest.fn(),
+  },
+}));
+
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
   useNavigate: () => mockNavigate,
@@ -17,21 +27,23 @@ jest.mock("../../services/apiService", () => ({
   getProducts: jest.fn(),
   createProduct: jest.fn(),
   deleteProduct: jest.fn(),
+  getProductImages: jest.fn(),
   getProductImagesByProductId: jest.fn(),
 }));
 
+import toast from "react-hot-toast";
 import { hasAnyRole } from "../../services/jwtUtils";
 import {
   getProducts,
   createProduct,
   deleteProduct,
+  getProductImages,
   getProductImagesByProductId,
 } from "../../services/apiService";
 
 describe("ProductsPage", () => {
   let consoleErrorSpy: jest.SpyInstance;
   let consoleLogSpy: jest.SpyInstance;
-  let alertSpy: jest.SpyInstance;
   let confirmSpy: jest.SpyInstance;
 
   const mockProducts = [
@@ -69,10 +81,11 @@ describe("ProductsPage", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (toast.success as jest.Mock).mockClear();
+    (toast.error as jest.Mock).mockClear();
     localStorage.clear();
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
-    alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
     confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
     (hasAnyRole as jest.Mock).mockReturnValue(true);
   });
@@ -80,7 +93,6 @@ describe("ProductsPage", () => {
   afterEach(() => {
     consoleErrorSpy.mockRestore();
     consoleLogSpy.mockRestore();
-    alertSpy.mockRestore();
     confirmSpy.mockRestore();
   });
 
@@ -103,7 +115,7 @@ describe("ProductsPage", () => {
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue(mockProducts);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -136,10 +148,11 @@ describe("ProductsPage", () => {
   });
 
   test("filters products by search query", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue(mockProducts);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -152,7 +165,7 @@ describe("ProductsPage", () => {
     });
 
     const searchInput = screen.getByPlaceholderText("Search products...");
-    fireEvent.change(searchInput, { target: { value: "Product 1" } });
+    await user.type(searchInput, "Product 1");
 
     await waitFor(() => {
       expect(screen.getByText("Test Product 1")).toBeInTheDocument();
@@ -161,10 +174,11 @@ describe("ProductsPage", () => {
   });
 
   test("filters products by brand", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue(mockProducts);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -177,7 +191,7 @@ describe("ProductsPage", () => {
     });
 
     const brandSelect = screen.getByDisplayValue("All Brands");
-    fireEvent.change(brandSelect, { target: { value: "Brand A" } });
+    await user.selectOptions(brandSelect, "Brand A");
 
     await waitFor(() => {
       expect(screen.getByText("Test Product 1")).toBeInTheDocument();
@@ -186,10 +200,11 @@ describe("ProductsPage", () => {
   });
 
   test("filters products by stock status", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue(mockProducts);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -202,7 +217,7 @@ describe("ProductsPage", () => {
     });
 
     const stockSelect = screen.getByDisplayValue("All Stock");
-    fireEvent.change(stockSelect, { target: { value: "outOfStock" } });
+    await user.selectOptions(stockSelect, "outOfStock");
 
     await waitFor(() => {
       expect(screen.queryByText("Test Product 1")).not.toBeInTheDocument();
@@ -212,10 +227,11 @@ describe("ProductsPage", () => {
   });
 
   test("clears all filters when clear button is clicked", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue(mockProducts);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -228,14 +244,14 @@ describe("ProductsPage", () => {
     });
 
     const searchInput = screen.getByPlaceholderText("Search products...");
-    fireEvent.change(searchInput, { target: { value: "Product 1" } });
+    await user.type(searchInput, "Product 1");
 
     await waitFor(() => {
       expect(screen.queryByText("Test Product 2")).not.toBeInTheDocument();
     });
 
     const clearButton = screen.getByText("Clear");
-    fireEvent.click(clearButton);
+    await user.click(clearButton);
 
     await waitFor(() => {
       expect(screen.getByText("Test Product 1")).toBeInTheDocument();
@@ -244,10 +260,11 @@ describe("ProductsPage", () => {
   });
 
   test("opens add product modal", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue(mockProducts);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -260,7 +277,7 @@ describe("ProductsPage", () => {
     });
 
     const addButton = screen.getByText("+ Add Product");
-    fireEvent.click(addButton);
+    await user.click(addButton);
 
     await waitFor(() => {
       expect(screen.getByText("Add New Product")).toBeInTheDocument();
@@ -268,10 +285,11 @@ describe("ProductsPage", () => {
   });
 
   test("closes modal when cancel button is clicked", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue(mockProducts);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -283,13 +301,13 @@ describe("ProductsPage", () => {
       expect(screen.getByText("Test Product 1")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("+ Add Product"));
+    await user.click(screen.getByText("+ Add Product"));
     
     await waitFor(() => {
       expect(screen.getByText("Add New Product")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Cancel"));
+    await user.click(screen.getByText("Cancel"));
 
     await waitFor(() => {
       expect(screen.queryByText("Add New Product")).not.toBeInTheDocument();
@@ -297,10 +315,11 @@ describe("ProductsPage", () => {
   });
 
   test("shows no products message when filters return empty", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue(mockProducts);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -313,7 +332,7 @@ describe("ProductsPage", () => {
     });
 
     const searchInput = screen.getByPlaceholderText("Search products...");
-    fireEvent.change(searchInput, { target: { value: "NonExistentProduct" } });
+    await user.type(searchInput, "NonExistentProduct");
 
     await waitFor(() => {
       expect(screen.getByText("No products match the selected filters.")).toBeInTheDocument();
@@ -324,7 +343,7 @@ describe("ProductsPage", () => {
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue(mockProducts);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -346,7 +365,7 @@ describe("ProductsPage", () => {
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue(mockProducts);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -364,7 +383,7 @@ describe("ProductsPage", () => {
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue(mockProducts);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -380,10 +399,11 @@ describe("ProductsPage", () => {
   });
 
   test("starts and cancels stock edit", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue(mockProducts);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -396,14 +416,14 @@ describe("ProductsPage", () => {
     });
 
     const editButtons = screen.getAllByTitle("Quick update stock");
-    fireEvent.click(editButtons[0]);
+    await user.click(editButtons[0]);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue("15")).toBeInTheDocument();
     });
 
     const cancelButton = screen.getByText("✕");
-    fireEvent.click(cancelButton);
+    await user.click(cancelButton);
 
     await waitFor(() => {
       expect(screen.queryByDisplayValue("15")).not.toBeInTheDocument();
@@ -411,10 +431,11 @@ describe("ProductsPage", () => {
   });
 
   test("deletes product successfully", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue([mockProducts[2]]); // Only out of stock product
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
     (deleteProduct as jest.Mock).mockResolvedValue({ message: "Deleted" });
 
     render(
@@ -428,18 +449,25 @@ describe("ProductsPage", () => {
     });
 
     const deleteButton = screen.getByText("Delete");
-    fireEvent.click(deleteButton);
+    await user.click(deleteButton);
+
+    // Modal opens with confirmation - click the Delete button in the modal to confirm
+    const confirmDeleteButton = document.querySelector(
+      '.modal-content .btn-submit'
+    ) as HTMLButtonElement;
+    await user.click(confirmDeleteButton);
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith("Product deleted successfully!");
+      expect(toast.success).toHaveBeenCalledWith("Product deleted successfully!");
     });
   });
 
   test("prevents deletion of product with stock > 0", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue([mockProducts[0]]);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -452,18 +480,20 @@ describe("ProductsPage", () => {
     });
 
     const deleteButton = screen.getByText("Delete");
-    fireEvent.click(deleteButton);
+    await user.click(deleteButton);
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith("Cannot delete product with stock > 0");
+      expect(toast.error).toHaveBeenCalledWith("Cannot delete product with stock > 0");
     });
   });
 
   test("submits add product form with validation", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
+    (hasAnyRole as jest.Mock).mockReturnValue(true);
     (getProducts as jest.Mock).mockResolvedValue([]);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
     (createProduct as jest.Mock).mockResolvedValue({ ...mockProducts[0], id: 4 });
 
     render(
@@ -476,29 +506,35 @@ describe("ProductsPage", () => {
       expect(screen.getByText("+ Add Product")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("+ Add Product"));
+    await user.click(screen.getByText("+ Add Product"));
 
     await waitFor(() => {
       expect(screen.getByText("Add New Product")).toBeInTheDocument();
     });
 
-    // Fill in the form
-    fireEvent.change(screen.getByLabelText("Product Name *"), { target: { value: "New Product" } });
-    fireEvent.change(screen.getByLabelText("Price (₹) *"), { target: { value: "100" } });
-    fireEvent.change(screen.getByLabelText("Stock Quantity *"), { target: { value: "50" } });
+    // Fill in the form - use getByLabelText with exact label from component
+    const nameInput = screen.getByLabelText("Product Name *");
+    const priceInput = screen.getByLabelText("Price (₹) *");
+    const stockInput = screen.getByLabelText("Stock Quantity *");
+    
+    await user.type(nameInput, "New Product");
+    await user.type(priceInput, "100");
+    await user.type(stockInput, "50");
 
-    fireEvent.click(screen.getByText("Create Product"));
+    await user.click(screen.getByText('Create Product'));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith("Product added successfully!");
+      expect(toast.success).toHaveBeenCalledWith("Product added successfully!");
     });
   });
 
   test("validates price and stock inputs", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
+    (hasAnyRole as jest.Mock).mockReturnValue(true);
     (getProducts as jest.Mock).mockResolvedValue([]);
-    (getProductImagesByProductId as jest.Mock).mockResolvedValue([]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
 
     render(
       <MemoryRouter>
@@ -510,27 +546,33 @@ describe("ProductsPage", () => {
       expect(screen.getByText("+ Add Product")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("+ Add Product"));
+    await user.click(screen.getByText("+ Add Product"));
 
     await waitFor(() => {
       expect(screen.getByText("Add New Product")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Product Name *"), { target: { value: "New Product" } });
-    fireEvent.change(screen.getByLabelText("Price (₹) *"), { target: { value: "-10" } });
-    fireEvent.change(screen.getByLabelText("Stock Quantity *"), { target: { value: "50" } });
+    const nameInput = screen.getByLabelText("Product Name *");
+    const priceInput = screen.getByLabelText("Price (₹) *");
+    const stockInput = screen.getByLabelText("Stock Quantity *");
+    
+    await user.type(nameInput, "New Product");
+    await user.type(priceInput, "-10");
+    await user.type(stockInput, "50");
 
-    fireEvent.click(screen.getByText("Create Product"));
+    await user.click(screen.getByText("Create Product"));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith("Please enter a valid positive price.");
+      expect(toast.error).toHaveBeenCalledWith("Please enter a valid positive price.");
     });
   });
 
   test("opens edit modal for existing product", async () => {
+    const user = userEvent.setup();
     localStorage.setItem("token", "fake-token");
     
     (getProducts as jest.Mock).mockResolvedValue([mockProducts[0]]);
+    (getProductImages as jest.Mock).mockResolvedValue([]);
     (getProductImagesByProductId as jest.Mock).mockResolvedValue([{ image_url: "http://example.com/image.jpg" }]);
 
     render(
@@ -544,7 +586,7 @@ describe("ProductsPage", () => {
     });
 
     const editButton = screen.getByText("Edit");
-    fireEvent.click(editButton);
+    await user.click(editButton);
 
     await waitFor(() => {
       expect(screen.getByText("Edit Product")).toBeInTheDocument();

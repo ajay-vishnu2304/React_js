@@ -1,6 +1,7 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import AdminDashboard from "../../pages/adminDashboard/adminDashboard";
+import AdminDashboard from "../../pages/AdminDashboard/AdminDashboard";
 import "@testing-library/jest-dom";
 
 const mockNavigate = jest.fn();
@@ -177,8 +178,9 @@ describe("AdminDashboard", () => {
     });
 
     // The NavBar should be rendered with a menu toggle button
+    const user = userEvent.setup();
     const menuButton = screen.getByLabelText("Toggle menu");
-    fireEvent.click(menuButton);
+    await user.click(menuButton);
   });
 
   test("handles empty dashboard data", async () => {

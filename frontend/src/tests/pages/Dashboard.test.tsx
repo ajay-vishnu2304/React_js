@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import Dashboard from "../../pages/dashboard/Dashboard";
+import Dashboard from "../../pages/Dashboard/Dashboard";
 import "@testing-library/jest-dom";
 
 describe("Dashboard Page", () => {
@@ -50,12 +50,6 @@ describe("Dashboard Page", () => {
         status: 200,
         statusText: 'OK',
         text: async () => JSON.stringify(fakeProducts),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        text: async () => JSON.stringify([]),
       })
       .mockResolvedValueOnce({
         ok: true,
