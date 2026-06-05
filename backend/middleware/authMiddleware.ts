@@ -31,3 +31,16 @@ export const authMiddleware = (
     res.status(401).json({ message: "Invalid token" });
   }
 };
+
+
+export const adminMiddleware = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  if (req.user?.role !== "admin") {
+    res.status(403).json({ message: "Access only Admin" });
+    return;
+  }
+  next();
+};

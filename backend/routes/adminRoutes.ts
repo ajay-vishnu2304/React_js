@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authMiddleware } from "../middleware/authMiddleware";
+import { authMiddleware,adminMiddleware } from "../middleware/authMiddleware";
 import {
   getStats,
   getUsers,
@@ -15,6 +15,7 @@ import {
 const router = Router();
 
 router.use(authMiddleware);
+router.use(adminMiddleware)
 
 router.get("/stats", getStats);
 router.get("/users", getUsers);
