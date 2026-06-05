@@ -5,10 +5,14 @@ import bcrypt from "bcrypt";
 
 export const getStats = async (_req: AuthRequest, res: Response) => {
   try {
-    const [userRows]: any = await db.query("SELECT COUNT(*) as userCount FROM users");
+    const [userRows]: any = await db.query(
+      "SELECT COUNT(*) as userCount FROM users",
+    );
     const userCount = userRows[0].userCount;
 
-    const [productRows]: any = await db.query("SELECT COUNT(*) as productCount FROM products");
+    const [productRows]: any = await db.query(
+      "SELECT COUNT(*) as productCount FROM products",
+    );
     const productCount = productRows[0].productCount;
     res.json({ userCount, productCount, orderCount: 0 });
   } catch {
@@ -19,7 +23,7 @@ export const getStats = async (_req: AuthRequest, res: Response) => {
 export const getUsers = async (_req: AuthRequest, res: Response) => {
   try {
     const [users]: any = await db.query(
-      "SELECT id, name, email, role, created_at FROM users"
+      "SELECT id, name, email, role, created_at FROM users",
     );
     res.json(users);
   } catch {
@@ -46,13 +50,15 @@ export const createUser = async (req: AuthRequest, res: Response) => {
   try {
     const { name, email, password, role } = req.body;
     if (!name || !email || !password) {
-      res.status(400).json({ message: "Name, email and password are required" });
+      res
+        .status(400)
+        .json({ message: "Name, email and password are required" });
       return;
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     await db.query(
       "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
-      [name, email, hashedPassword, role || "user"]
+      [name, email, hashedPassword, role || "user"],
     );
     res.status(201).json({ message: "User created" });
   } catch {
@@ -81,10 +87,11 @@ export const getProducts = async (_req: AuthRequest, res: Response) => {
 
 export const createProduct = async (req: AuthRequest, res: Response) => {
   try {
-    const { name, description, price, stock_no, brand, color, size, image } = req.body;
+    const { name, description, price, stock_no, brand, color, size, image } =
+      req.body;
     await db.query(
       `INSERT INTO products (name, description, price, stock_no, brand, color, size, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, description, price, stock_no, brand, color, size, image]
+      [name, description, price, stock_no, brand, color, size, image],
     );
     res.status(201).json({ message: "Product created" });
   } catch {
@@ -95,10 +102,11 @@ export const createProduct = async (req: AuthRequest, res: Response) => {
 export const updateProduct = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, price, stock_no, brand, color, size, image } = req.body;
+    const { name, description, price, stock_no, brand, color, size, image } =
+      req.body;
     await db.query(
       `UPDATE products SET name=?, description=?, price=?, stock_no=?, brand=?, color=?, size=?, image=? WHERE id=?`,
-      [name, description, price, stock_no, brand, color, size, image, id]
+      [name, description, price, stock_no, brand, color, size, image, id],
     );
     res.json({ message: "Product updated" });
   } catch {

@@ -8,6 +8,7 @@ import Orders from "./pages/admin/Orders";
 import Products from "./pages/admin/Products";
 import UserLayout from "./layouts/UserLayout";
 import AdminLayout from "./layouts/AdminLayout";
+import ProtectedRoute, { AdminRoute } from "./components/ProtectedRoute";
 import "./pages/auth/auth.css";
 import "./components.css";
 
@@ -18,15 +19,19 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        <Route element={<UserLayout />}>
-          <Route path="/dashboard" element={<UserDashboard />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<UserLayout />}>
+            <Route path="/dashboard" element={<UserDashboard />} />
+          </Route>
         </Route>
 
-        <Route element={<AdminLayout />}>
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/users" element={<Users />} />
-          <Route path="/admin/orders" element={<Orders />} />
-          <Route path="/admin/products" element={<Products />} />
+        <Route element={<AdminRoute />}>
+          <Route element={<AdminLayout />}>
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<Users />} />
+            <Route path="/admin/orders" element={<Orders />} />
+            <Route path="/admin/products" element={<Products />} />
+          </Route>
         </Route>
 
         <Route path="/" element={<Navigate to="/login" replace />} />
