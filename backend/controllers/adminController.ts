@@ -5,12 +5,11 @@ import bcrypt from "bcrypt";
 
 export const getStats = async (_req: AuthRequest, res: Response) => {
   try {
-    const [[{ userCount }]]: any = await db.query(
-      "SELECT COUNT(*) as userCount FROM users"
-    );
-    const [[{ productCount }]]: any = await db.query(
-      "SELECT COUNT(*) as productCount FROM products"
-    );
+    const [userRows]: any = await db.query("SELECT COUNT(*) as userCount FROM users");
+    const userCount = userRows[0].userCount;
+
+    const [productRows]: any = await db.query("SELECT COUNT(*) as productCount FROM products");
+    const productCount = productRows[0].productCount;
     res.json({ userCount, productCount, orderCount: 0 });
   } catch {
     res.status(500).json({ message: "Server error" });
