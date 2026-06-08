@@ -16,7 +16,6 @@ const Users = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
-  const token = localStorage.getItem("token");
   const { authFetch } = useAuthenticatedFetch();
 
   const fetchUsers = () => {
@@ -38,12 +37,8 @@ const Users = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch(`${import.meta.env.VITE_API_URL}/admin/users`, {
+    await authFetch("/admin/users", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
       body: JSON.stringify({ name, email, password, role }),
     });
     setShowModal(false);
@@ -52,12 +47,8 @@ const Users = () => {
   };
 
   const handleRoleChange = async (id: number, newRole: string) => {
-    await fetch(`${import.meta.env.VITE_API_URL}/admin/users/${id}/role`, {
+    await authFetch(`/admin/users/${id}/role`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
       body: JSON.stringify({ role: newRole }),
     });
     fetchUsers();
@@ -65,9 +56,8 @@ const Users = () => {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this user?")) return;
-    await fetch(`${import.meta.env.VITE_API_URL}/admin/users/${id}`, {
+    await authFetch(`/admin/users/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
     });
     fetchUsers();
   };

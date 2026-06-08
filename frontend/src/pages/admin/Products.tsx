@@ -26,13 +26,12 @@ const Products = () => {
   const [description, setDescription] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const token = localStorage.getItem("token");
-  const {authFetch}= useAuthenticatedFetch()
-  
+  const { authFetch } = useAuthenticatedFetch();
 
   const fetchProducts = () => {
-   authFetch("/admin/products")
-   .then((r)=>r.json()).then(setProducts)
+    authFetch("/admin/products")
+      .then((r) => r.json())
+      .then(setProducts);
   };
 
   useEffect(() => {
@@ -71,17 +70,11 @@ const Products = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const url = editId
-      ? `${import.meta.env.VITE_API_URL}/admin/products/${editId}`
-      : `${import.meta.env.VITE_API_URL}/admin/products`;
+    const url = editId ? `/admin/products/${editId}` : `/admin/products`;
     const method = editId ? "PUT" : "POST";
 
-    await fetch(url, {
+    await authFetch(url, {
       method,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
       body: JSON.stringify({
         name,
         price: parseFloat(price),
@@ -100,9 +93,8 @@ const Products = () => {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this product?")) return;
-    await fetch(`${import.meta.env.VITE_API_URL}/admin/products/${id}`, {
+    await authFetch(`/admin/products/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
     });
     fetchProducts();
   };

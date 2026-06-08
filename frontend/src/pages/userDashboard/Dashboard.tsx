@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuthenticatedFetch } from "../../hooks/useAuthenticatedFetch";
 
 interface Product {
   id: number;
@@ -8,11 +9,14 @@ interface Product {
   price: number;
   brand: string;
   image: string;
+  color:string;
+  size:string;
 }
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const {authFetch}=useAuthenticatedFetch()
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -32,9 +36,7 @@ const Dashboard = () => {
       return;
     }
 
-    fetch(`${import.meta.env.VITE_API_URL}/products`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    authFetch(`/products`)
       .then((r) => r.json())
       .then(setProducts);
   }, []);

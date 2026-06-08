@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Card from "../../components/Card";
+import { useAuthenticatedFetch } from "../../hooks/useAuthenticatedFetch";
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -7,11 +8,10 @@ const AdminDashboard = () => {
     productCount: 0,
     orderCount: 0,
   });
+  const {authFetch} = useAuthenticatedFetch()
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/admin/stats`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
+    authFetch(`/admin/stats`)
       .then((r) => r.json())
       .then(setStats);
   }, []);
