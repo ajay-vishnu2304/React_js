@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuthenticatedFetch } from "../../hooks/useAuthenticatedFetch";
 
 interface User {
   id: number;
@@ -16,11 +17,10 @@ const Users = () => {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
   const token = localStorage.getItem("token");
+  const { authFetch } = useAuthenticatedFetch();
 
   const fetchUsers = () => {
-    fetch(`${import.meta.env.VITE_API_URL}/admin/users`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    authFetch("/admin/users")
       .then((r) => r.json())
       .then(setUsers);
   };
@@ -88,9 +88,12 @@ const Users = () => {
       </div>
 
       {showModal && (
-        <div className="modal-overlay" onClick={(e) => {
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
             if (e.target === e.currentTarget) setShowModal(false);
-          }}>
+          }}
+        >
           <div className="modal">
             <h2>Add User</h2>
             <form onSubmit={handleSubmit}>

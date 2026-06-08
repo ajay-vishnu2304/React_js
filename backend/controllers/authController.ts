@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../src/config/db";
 import bcrypt from "bcrypt";
 
-import jwt from 'jsonwebtoken'
+import jwt from "jsonwebtoken";
 
 export const signup = async (req: Request, res: Response) => {
   try {
@@ -31,12 +31,10 @@ export const signup = async (req: Request, res: Response) => {
 
     return res.status(201).json({ message: "User created successfully" });
   } catch (error) {
-    console.log("signup error:",error)
+    console.log("signup error:", error);
     return res.status(500).json({ message: "Server error" });
-    
   }
 };
-
 
 export const login = async (req: Request, res: Response) => {
   try {
@@ -47,10 +45,9 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    const [users]: any = await db.query(
-      `SELECT * FROM users WHERE email = ?`,
-      [email]
-    );
+    const [users]: any = await db.query(`SELECT * FROM users WHERE email = ?`, [
+      email,
+    ]);
 
     const user = users[0];
     if (!user) {
@@ -65,7 +62,7 @@ export const login = async (req: Request, res: Response) => {
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET ?? "",
-      { expiresIn: "1d" }
+      { expiresIn: "1d" },
     );
 
     return res.json({ message: "Login Successful", token });

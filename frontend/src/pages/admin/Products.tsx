@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import ProductFormModal from "../../components/ProductFormModal";
+import { useAuthenticatedFetch } from "../../hooks/useAuthenticatedFetch";
 
 interface Product {
   id: number;
@@ -26,18 +27,17 @@ const Products = () => {
   const [editId, setEditId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const token = localStorage.getItem("token");
+  const {authFetch}= useAuthenticatedFetch()
+  
 
   const fetchProducts = () => {
-  fetch(`${import.meta.env.VITE_API_URL}/admin/products`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-    .then((r) => r.json())
-    .then(setProducts);
-};
+   authFetch("/admin/products")
+   .then((r)=>r.json()).then(setProducts)
+  };
 
-useEffect(() => {
-  fetchProducts();
-}, []); 
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   const resetForm = () => {
     setName("");

@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import Card from "../../components/Card";
 
 const AdminDashboard = () => {
-  const [stats, setStats] = useState({ userCount: 0, productCount: 0, orderCount: 0 });
+  const [stats, setStats] = useState({
+    userCount: 0,
+    productCount: 0,
+    orderCount: 0,
+  });
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/admin/stats`, {

@@ -32,7 +32,9 @@ const Dashboard = () => {
       return;
     }
 
-    fetch(`${import.meta.env.VITE_API_URL}/products`)
+    fetch(`${import.meta.env.VITE_API_URL}/products`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((r) => r.json())
       .then(setProducts);
   }, []);
