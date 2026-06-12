@@ -22,16 +22,21 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/signup`, {
+      const res = await fetch("/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: userName, email, password }),
+        body: JSON.stringify({
+          username: userName,
+          email,
+          password,
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError({ general: data.message });
+        const msg = data.error || data.message || "Signup failed";
+        setError({ general: msg });
         return;
       }
 

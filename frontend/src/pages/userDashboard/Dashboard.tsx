@@ -37,8 +37,12 @@ const Dashboard = () => {
     }
 
     authFetch(`/products`)
-      .then((r) => r.json())
-      .then(setProducts);
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch products");
+        return r.json();
+      })
+      .then(setProducts)
+      .catch(() => {});
   }, []);
 
   return (
@@ -49,7 +53,12 @@ const Dashboard = () => {
       <h2 style={{ marginTop: "2rem" }}>Products</h2>
       <div className="product-grid">
         {products.map((p) => (
-          <div className="product-card" key={p.id}>
+          <div
+            className="product-card"
+            key={p.id}
+            onClick={() => navigate(`/products/${p.id}`)}
+            style={{ cursor: "pointer" }}
+          >
             {p.image ? (
               <img src={p.image} alt={p.name} />
             ) : (

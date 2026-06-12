@@ -5,7 +5,7 @@ import Sidebar from "../components/Sidebar";
 const AdminLayout = () => {
   return (
     <div className="admin-layout">
-      <Navbar />
+      <Navbar isAdmin={true} />
       <div className="admin-body">
         <Sidebar />
         <main className="admin-content">

@@ -1,18 +1,22 @@
-const API_URL = import.meta.env.VITE_API_URL;
+import { useCallback } from "react";
+import { useAppSelector } from "../store/hooks";
 
 export function useAuthenticatedFetch() {
-  const token = localStorage.getItem("token");
+  const token = useAppSelector((state) => state.auth.token);
 
-  const authFetch = (endpoint: string, options: RequestInit = {}) => {
-    return fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        ...options?.headers,
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-  };
+  const authFetch = useCallback(
+    (endpoint: string, options: RequestInit = {}) => {
+      return fetch(endpoint, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...options.headers,
+        },
+      });
+    },
+    [token]
+  );
 
   return { authFetch };
 }

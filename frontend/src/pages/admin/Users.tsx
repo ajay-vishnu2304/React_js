@@ -19,9 +19,18 @@ const Users = () => {
   const { authFetch } = useAuthenticatedFetch();
 
   const fetchUsers = () => {
-    authFetch("/admin/users")
-      .then((r) => r.json())
-      .then(setUsers);
+    authFetch("/users")
+      .then((r) => {
+        if (!r.ok) {
+          throw new Error(`HTTP ${r.status}`);
+        }
+        return r.json();
+      })
+      .then(setUsers)
+      .catch((err) => {
+        console.error("Failed to fetch users:", err);
+        alert("Failed to load users. Please check if you're logged in as admin.");
+      });
   };
 
   useEffect(() => {
@@ -37,9 +46,9 @@ const Users = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await authFetch("/admin/users", {
+    await authFetch("/users", {
       method: "POST",
-      body: JSON.stringify({ name, email, password, role }),
+      body: JSON.stringify({ email, first_name: name, password, role }),
     });
     setShowModal(false);
     resetForm();
@@ -47,19 +56,39 @@ const Users = () => {
   };
 
   const handleRoleChange = async (id: number, newRole: string) => {
-    await authFetch(`/admin/users/${id}/role`, {
-      method: "PATCH",
-      body: JSON.stringify({ role: newRole }),
-    });
-    fetchUsers();
+    try {
+      const res = await authFetch(`/users/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role: newRole }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Failed to update role");
+        fetchUsers();
+        return;
+      }
+      fetchUsers();
+    } catch (err) {
+      alert("Network error. Please try again.");
+      fetchUsers();
+    }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this user?")) return;
-    await authFetch(`/admin/users/${id}`, {
-      method: "DELETE",
-    });
-    fetchUsers();
+    try {
+      const res = await authFetch(`/users/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Failed to delete user");
+        return;
+      }
+      fetchUsers();
+    } catch (err) {
+      alert("Network error. Please try again.");
+    }
   };
 
   return (

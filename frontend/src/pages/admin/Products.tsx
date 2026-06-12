@@ -29,9 +29,18 @@ const Products = () => {
   const { authFetch } = useAuthenticatedFetch();
 
   const fetchProducts = () => {
-    authFetch("/admin/products")
-      .then((r) => r.json())
-      .then(setProducts);
+    authFetch("/products")
+      .then((r) => {
+        if (!r.ok) {
+          throw new Error(`HTTP ${r.status}`);
+        }
+        return r.json();
+      })
+      .then(setProducts)
+      .catch((err) => {
+        console.error("Failed to fetch products:", err);
+        alert("Failed to load products. Please check if you're logged in as admin.");
+      });
   };
 
   useEffect(() => {
@@ -70,33 +79,52 @@ const Products = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const url = editId ? `/admin/products/${editId}` : `/admin/products`;
-    const method = editId ? "PUT" : "POST";
+    const url = editId ? `/products/${editId}` : `/products`;
+    const method = editId ? "PATCH" : "POST";
 
-    await authFetch(url, {
-      method,
-      body: JSON.stringify({
-        name,
-        price: parseFloat(price),
-        stock_no: parseInt(stock),
-        brand,
-        color,
-        size,
-        image,
-        description,
-      }),
-    });
+    try {
+      const res = await authFetch(url, {
+        method,
+        body: JSON.stringify({
+          name,
+          price: parseFloat(price),
+          stock_no: parseInt(stock),
+          brand,
+          color,
+          size,
+          image,
+          description,
+        }),
+      });
 
-    setShowModal(false);
-    fetchProducts();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.message || "Operation failed");
+        return;
+      }
+
+      setShowModal(false);
+      fetchProducts();
+    } catch (err) {
+      alert("Network error. Please try again.");
+    }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this product?")) return;
-    await authFetch(`/admin/products/${id}`, {
-      method: "DELETE",
-    });
-    fetchProducts();
+    try {
+      const res = await authFetch(`/products/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.message || "Failed to delete product");
+        return;
+      }
+      fetchProducts();
+    } catch (err) {
+      alert("Network error. Please try again.");
+    }
   };
 
   return (

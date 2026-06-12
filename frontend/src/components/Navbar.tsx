@@ -1,10 +1,33 @@
+import { useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { logout } from "../store/slices/authSlice";
+import { setCart } from "../store/slices/cartSlice";
+import { useAuthenticatedFetch } from "../hooks/useAuthenticatedFetch";
+import { FiShoppingCart } from "react-icons/fi";
 
-const Navbar = () => {
+const Navbar = ({ isAdmin }: { isAdmin?: boolean }) => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { authFetch } = useAuthenticatedFetch();
+  const { items: cartItems } = useAppSelector((state) => state.cart);
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const totalItems = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.quantity, 0),
+    [cartItems]
+  );
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      authFetch("/carts/cart")
+        .then((res) => res.json())
+        .then((data) => dispatch(setCart(data)))
+        .catch(() => {});
+    }
+  }, [isAuthenticated,authFetch,]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    dispatch(logout());
     navigate("/login");
   };
 
@@ -15,6 +38,12 @@ const Navbar = () => {
         <Link to="/products">Products</Link>
       </div>
       <div className="navbar-right">
+        {!isAdmin && (
+          <Link to="/cart" className="cart-icon">
+            <FiShoppingCart size={22} />
+            {totalItems > 0 && <span className="cart-badge">{totalItems}</span>}
+          </Link>
+        )}
         <button className="logout-btn" onClick={handleLogout}>
           Logout
         </button>

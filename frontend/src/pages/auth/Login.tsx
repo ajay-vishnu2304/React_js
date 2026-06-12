@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../../hooks/useAuth";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import { setCredentials } from "../../store/slices/authSlice";
 
 interface FormErrors {
   email?: string;
@@ -10,17 +11,18 @@ interface FormErrors {
 
 const Login = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch()
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin } = useAppSelector((state) => state.auth);
 
   useEffect(() => {
     if (isAuthenticated) {
       navigate(isAdmin ? "/admin/dashboard" : "/dashboard", { replace: true });
     }
-  }, []);
+  }, [isAuthenticated, isAdmin, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +30,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+      const res = await fetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -37,19 +39,15 @@ const Login = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        if (data.field === "email") {
-          setError({ email: data.message });
-        } else if (data.field === "password") {
-          setError({ password: data.message });
-        } else {
-          setError({ general: data.message });
-        }
+        const msg = data.error || data.message || "Login failed";
+        setError({ general: msg });
         return;
       }
 
-      localStorage.setItem("token", data.token);
+      dispatch(setCredentials(data.token));
 
-      navigate("/dashboard");
+      const payload = JSON.parse(atob(data.token.split(".")[1]));
+      navigate(payload.role === "admin" ? "/admin/dashboard" : "/dashboard");
     } catch {
       setError({ general: "Server error. Please try again." });
     } finally {
