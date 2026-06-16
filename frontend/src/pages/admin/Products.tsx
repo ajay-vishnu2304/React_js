@@ -29,14 +29,18 @@ const Products = () => {
   const { authFetch } = useAuthenticatedFetch();
 
   const fetchProducts = () => {
-    authFetch("/products")
-      .then((r) => {
-        if (!r.ok) {
-          throw new Error(`HTTP ${r.status}`);
+    
+    authFetch("/products?limit=50")
+      .then((r) => r.json())
+      .then((data) => {
+        const productsArray = Array.isArray(data) ? data : data.products;
+        if (Array.isArray(productsArray)) {
+          setProducts(productsArray);
+        } else {
+          console.error("Unexpected API format:", data);
+          setProducts([]);
         }
-        return r.json();
       })
-      .then(setProducts)
       .catch((err) => {
         console.error("Failed to fetch products:", err);
         alert("Failed to load products. Please check if you're logged in as admin.");
@@ -107,6 +111,7 @@ const Products = () => {
       fetchProducts();
     } catch (err) {
       alert("Network error. Please try again.");
+      console.log(err)
     }
   };
 
@@ -124,6 +129,7 @@ const Products = () => {
       fetchProducts();
     } catch (err) {
       alert("Network error. Please try again.");
+      console.log(err)
     }
   };
 

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { setCart } from "../../store/slices/cartSlice";
+import { logout } from "../../store/slices/authSlice";
 import { useAuthenticatedFetch } from "../../hooks/useAuthenticatedFetch";
 
 export default function Cart() {
@@ -15,14 +16,26 @@ export default function Cart() {
     if (isAuthenticated) {
       authFetch("/carts/cart")
         .then((res) => res.json())
-        .then((data) => dispatch(setCart(data)));
+        .then((data) => dispatch(setCart(data)))
+        .catch((err) => {
+          if (err.message?.includes("401")) {
+            dispatch(logout());
+            navigate("/login");
+          }
+        });
     }
-  }, [isAuthenticated, authFetch, dispatch]);
+  }, [isAuthenticated, authFetch, dispatch, navigate]);
 
   const reloadCart = () => {
     authFetch("/carts/cart")
       .then((res) => res.json())
-      .then((data) => dispatch(setCart(data)));
+      .then((data) => dispatch(setCart(data)))
+      .catch((err) => {
+        if (err.message?.includes("401")) {
+          dispatch(logout());
+          navigate("/login");
+        }
+      });
   };
 
   const handleRemove = async (cartItemId: number) => {
@@ -39,12 +52,12 @@ export default function Cart() {
     reloadCart();
   };
 
-  const total = cartItems.reduce(
+  const total = (cartItems ?? []).reduce(
     (sum, item) => sum + item.price * item.quantity,
     0,
   );
 
-  if (cartItems.length === 0) {
+  if ((cartItems ?? []).length === 0) {
     return (
       <div className="cart-empty">
         <h2>Your Cart is Empty</h2>

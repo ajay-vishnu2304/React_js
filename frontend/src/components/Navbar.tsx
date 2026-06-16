@@ -13,7 +13,7 @@ const Navbar = ({ isAdmin }: { isAdmin?: boolean }) => {
   const { items: cartItems } = useAppSelector((state) => state.cart);
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const totalItems = useMemo(
-    () => cartItems.reduce((sum, item) => sum + item.quantity, 0),
+    () => (cartItems ?? []).reduce((sum, item) => sum + item.quantity, 0),
     [cartItems]
   );
 
@@ -22,9 +22,14 @@ const Navbar = ({ isAdmin }: { isAdmin?: boolean }) => {
       authFetch("/carts/cart")
         .then((res) => res.json())
         .then((data) => dispatch(setCart(data)))
-        .catch(() => {});
+        .catch((err) => {
+          if (err.message?.includes("401")) {
+            dispatch(logout());
+            navigate("/login");
+          }
+        });
     }
-  }, [isAuthenticated,authFetch,]);
+  }, [isAuthenticated, authFetch, dispatch, navigate]);
 
   const handleLogout = () => {
     dispatch(logout());

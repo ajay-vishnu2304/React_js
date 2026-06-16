@@ -51,12 +51,14 @@ export default function Checkout() {
       .then((addresses) => {
         setSavedAddresses(addresses);
         for (let i = 0; i < addresses.length; i++) {
-          if (addresses[i].isDefault) {
-            setSelectedAddressId(addresses[i].id);
+          if (addresses.length > 0) {
+            setSelectedAddressId(addresses[0].id);
           }
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Failed to load addresses:", err);
+      });
   }, [authFetch]);
 
   if (!ordered && cartItems.length === 0) {

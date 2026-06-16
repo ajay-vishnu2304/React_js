@@ -25,10 +25,10 @@ const cartSlice = createSlice({
   reducers: {
     setCart: (
       state,
-      action: PayloadAction<{ cartId: number; items: CartItem[] }>,
+      action: PayloadAction<{ cartId?: number; items?: CartItem[] }>,
     ) => {
-      state.cartId = action.payload.cartId;
-      state.items = action.payload.items;
+      state.cartId = action.payload.cartId ?? null;
+      state.items = action.payload.items ?? [];
     },
     clearCart: (state) => {
       state.items = [];
