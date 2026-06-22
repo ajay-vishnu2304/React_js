@@ -7,7 +7,7 @@ interface Props {
   brand: string;
   color: string;
   size: string;
-  image: string;
+  images: string[];
   description: string;
   onNameChange: (v: string) => void;
   onPriceChange: (v: string) => void;
@@ -15,7 +15,9 @@ interface Props {
   onBrandChange: (v: string) => void;
   onColorChange: (v: string) => void;
   onSizeChange: (v: string) => void;
-  onImageChange: (v: string) => void;
+  onImageChange: (index: number, v: string) => void;
+  onImageAdd: () => void;
+  onImageRemove: (index: number) => void;
   onDescriptionChange: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
@@ -30,7 +32,7 @@ const ProductFormModal = ({
   brand,
   color,
   size,
-  image,
+  images,
   description,
   onNameChange,
   onPriceChange,
@@ -39,6 +41,8 @@ const ProductFormModal = ({
   onColorChange,
   onSizeChange,
   onImageChange,
+  onImageAdd,
+  onImageRemove,
   onDescriptionChange,
   onSubmit,
   onClose,
@@ -88,11 +92,32 @@ const ProductFormModal = ({
             value={size}
             onChange={(e) => onSizeChange(e.target.value)}
           />
-          <input
-            placeholder="Image URL"
-            value={image}
-            onChange={(e) => onImageChange(e.target.value)}
-          />
+
+          <div className="images-section">
+            <label className="images-label">Image URLs</label>
+            {images.map((img, index) => (
+              <div className="image-row" key={index}>
+                <input
+                  placeholder={`Image URL ${index + 1}`}
+                  value={img}
+                  onChange={(e) => onImageChange(index, e.target.value)}
+                />
+                {images.length > 1 && (
+                  <button
+                    type="button"
+                    className="btn-remove-img"
+                    onClick={() => onImageRemove(index)}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            <button type="button" className="btn-add-img" onClick={onImageAdd}>
+              + Add another image
+            </button>
+          </div>
+
           <input
             placeholder="Description"
             value={description}

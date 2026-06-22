@@ -40,10 +40,12 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const total = cartItems.reduce(
+  const subtotal = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0,
   );
+  const tax = subtotal * 0.05;
+  const total = subtotal + tax;
 
   useEffect(() => {
     authFetch("/address")
@@ -258,9 +260,9 @@ export default function Checkout() {
           <h2>Order Summary</h2>
           {cartItems.map((item, i) => (
             <div className="checkout-item" key={i}>
-              {item.image ? (
+              {item.images?.[0] ? (
                 <img
-                  src={item.image}
+                  src={item.images[0]}
                   alt={item.name}
                   className="checkout-item-img"
                 />
@@ -277,8 +279,16 @@ export default function Checkout() {
             </div>
           ))}
           <div className="checkout-total">
+            <span>Subtotal</span>
+            <span>${subtotal.toFixed(2)}</span>
+          </div>
+          <div className="checkout-total">
+            <span>Tax (5%)</span>
+            <span>${tax.toFixed(2)}</span>
+          </div>
+          <div className="checkout-total">
             <span>Total</span>
-            <span>${total}</span>
+            <span>${total.toFixed(2)}</span>
           </div>
           <button
             className="btn-place-order"

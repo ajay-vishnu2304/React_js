@@ -10,7 +10,7 @@ interface Product {
   brand?: string;
   color?: string;
   size?: string;
-  image?: string;
+  images?: string[];
   description?: string;
 }
 
@@ -22,8 +22,9 @@ const Products = () => {
   const [brand, setBrand] = useState("");
   const [color, setColor] = useState("");
   const [size, setSize] = useState("");
-  const [image, setImage] = useState("");
+  const [images, setImages] = useState<string[]>([""]);
   const [description, setDescription] = useState("");
+
   const [editId, setEditId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const { authFetch } = useAuthenticatedFetch();
@@ -33,13 +34,7 @@ const Products = () => {
     authFetch("/products?limit=50")
       .then((r) => r.json())
       .then((data) => {
-        const productsArray = Array.isArray(data) ? data : data.products;
-        if (Array.isArray(productsArray)) {
-          setProducts(productsArray);
-        } else {
-          console.error("Unexpected API format:", data);
-          setProducts([]);
-        }
+        setProducts(data.products);
       })
       .catch((err) => {
         console.error("Failed to fetch products:", err);
@@ -58,7 +53,7 @@ const Products = () => {
     setBrand("");
     setColor("");
     setSize("");
-    setImage("");
+    setImages([""]);
     setDescription("");
     setEditId(null);
   };
@@ -75,16 +70,40 @@ const Products = () => {
     setBrand(p.brand || "");
     setColor(p.color || "");
     setSize(p.size || "");
-    setImage(p.image || "");
+
+    setImages(p.images?.length ? p.images : [""]);
+
     setDescription(p.description || "");
     setEditId(p.id);
     setShowModal(true);
+  };
+
+  const handleImageChange = (index: number, value: string) => {
+    const newImages = [...images];
+    newImages[index] = value;
+    setImages(newImages);
+  };
+
+  const handleImageAdd = () => {
+    setImages([...images, ""]);
+  };
+
+  const handleImageRemove = (index: number) => {
+    const newImages = images.filter((_, i) => i !== index);
+    setImages(newImages);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const url = editId ? `/products/${editId}` : `/products`;
     const method = editId ? "PATCH" : "POST";
+
+    const cleanImages = [];
+    for (const img of images) {
+      if (img && img.trim() !== "") {
+        cleanImages.push(img);
+      }
+    }
 
     try {
       const res = await authFetch(url, {
@@ -96,7 +115,7 @@ const Products = () => {
           brand,
           color,
           size,
-          image,
+          images: cleanImages,
           description,
         }),
       });
@@ -151,7 +170,7 @@ const Products = () => {
         brand={brand}
         color={color}
         size={size}
-        image={image}
+        images={images}
         description={description}
         onNameChange={setName}
         onPriceChange={setPrice}
@@ -159,7 +178,9 @@ const Products = () => {
         onBrandChange={setBrand}
         onColorChange={setColor}
         onSizeChange={setSize}
-        onImageChange={setImage}
+        onImageChange={handleImageChange}
+        onImageAdd={handleImageAdd}
+        onImageRemove={handleImageRemove}
         onDescriptionChange={setDescription}
         onSubmit={handleSubmit}
         onClose={() => setShowModal(false)}
@@ -182,8 +203,8 @@ const Products = () => {
           {products.map((p: Product) => (
             <tr key={p.id}>
               <td>
-                {p.image ? (
-                  <img src={p.image} alt={p.name} className="product-thumb" />
+                {p.images?.[0] ? (
+                  <img src={p.images[0]} alt={p.name} className="product-thumb" />
                 ) : (
                   <span className="no-img">No img</span>
                 )}
