@@ -285,9 +285,31 @@ describe("ProductDetails page", () => {
       json: () => Promise.resolve(product),
     } as Response);
 
-    renderDetails();
+    const store = configureStore({
+      reducer: {
+        auth: authReducer,
+        cart: cartReducer,
+        wishlist: wishlistReducer,
+        quantities: quantityReducer,
+        orders: orderReducer,
+      },
+      preloadedState,
+    });
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={["/", "/products/1"]}>
+          <Routes>
+            <Route path="/" element={<div>Home Page</div>} />
+            <Route path="/products/:id" element={<ProductDetails />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>
+    );
     await waitFor(() => screen.getByText("Blue Shirt"));
     await userEvent.click(screen.getByText("← Back"));
+    await waitFor(() => {
+      expect(screen.getByText("Home Page")).toBeInTheDocument();
+    });
   });
 
   it("selects a thumbnail to change main image", async () => {
@@ -297,8 +319,10 @@ describe("ProductDetails page", () => {
     } as Response);
     renderDetails();
     await waitFor(() => screen.getByText("Blue Shirt"));
-    const thumbs = screen.getAllByAltText(/Blue Shirt/);
+    const thumbs = document.querySelectorAll(".product-thumb");
     await userEvent.click(thumbs[1]);
+    const mainImage = document.querySelector(".main-image") as HTMLImageElement;
+    expect(mainImage.getAttribute("src")).toBe("img2.jpg");
   });
 
   it("opens and closes zoom overlay", async () => {
@@ -343,11 +367,16 @@ describe("ProductDetails page", () => {
     const mainImage = screen.getByAltText("Blue Shirt");
     await userEvent.click(mainImage);
 
+    const zoomImg = document.querySelector(".zoom-img") as HTMLImageElement;
+    expect(zoomImg.getAttribute("src")).toBe("img1.jpg");
+
     const nextButton = screen.getByText("›");
     await userEvent.click(nextButton);
+    expect(zoomImg.getAttribute("src")).toBe("img2.jpg");
 
     const prevButton = screen.getByText("‹");
     await userEvent.click(prevButton);
+    expect(zoomImg.getAttribute("src")).toBe("img1.jpg");
   });
 
   it("wraps around when navigating next on last image", async () => {
@@ -361,8 +390,11 @@ describe("ProductDetails page", () => {
     const mainImage = screen.getByAltText("Blue Shirt");
     await userEvent.click(mainImage);
 
+    const zoomImg = document.querySelector(".zoom-img") as HTMLImageElement;
     const nextButton = screen.getByText("›");
     await userEvent.click(nextButton);
+    expect(zoomImg.getAttribute("src")).toBe("img2.jpg");
     await userEvent.click(nextButton);
+    expect(zoomImg.getAttribute("src")).toBe("img1.jpg");
   });
 });
