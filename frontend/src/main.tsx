@@ -10,7 +10,12 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <Provider store={store}>
       <App />
-      <ToastContainer position="top-right" autoClose={2000} hideProgressBar closeButton={false} />
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar
+        closeButton={false}
+      />
     </Provider>
   </StrictMode>,
 );

@@ -1,21 +1,29 @@
 import { Link } from "react-router-dom";
 
-const Sidebar = () => {
+interface SidebarProps {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+const Sidebar = ({ open, onClose }: SidebarProps) => {
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${open ? "open" : ""}`}>
       <h3 className="sidebar-title">Admin Panel</h3>
       <ul className="sidebar-links">
         <li>
-          <Link to="/admin/dashboard">Dashboard</Link>
+          <Link to="/admin/dashboard" onClick={onClose}>Dashboard</Link>
         </li>
         <li>
-          <Link to="/admin/users">Users</Link>
+          <Link to="/admin/users" onClick={onClose}>Users</Link>
         </li>
         <li>
-          <Link to="/admin/orders">Orders</Link>
+          <Link to="/admin/orders" onClick={onClose}>Orders</Link>
         </li>
         <li>
-          <Link to="/admin/products">Products</Link>
+          <Link to="/admin/products" onClick={onClose}>Products</Link>
+        </li>
+        <li>
+          <Link to="/admin/coupons" onClick={onClose}>Coupons</Link>
         </li>
       </ul>
     </aside>

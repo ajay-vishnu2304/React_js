@@ -3,13 +3,15 @@ import authReducer from "./slices/authSlice"
 import cartReducer from "./slices/cartSlice"
 import orderReducer from "./slices/orderSlice"
 import quantityReducer from "./slices/quantitySlice"
+import wishlistReducer from "./slices/wishlistSlice"
 
 export const store = configureStore({
     reducer:{
         auth:authReducer,
         cart:cartReducer,
         orders:orderReducer,
-        quantities:quantityReducer
+        quantities:quantityReducer,
+        wishlist:wishlistReducer
     }
 });
 

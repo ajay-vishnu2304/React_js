@@ -12,7 +12,7 @@ const AdminDashboard = () => {
   const {authFetch} = useAuthenticatedFetch()
 
   useEffect(() => {
-    authFetch("/admin/dashboard")
+    authFetch("/api/admin/dashboard")
       .then((r) => r.json())
       .then((data) => {
         setStats({

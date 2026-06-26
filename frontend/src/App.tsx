@@ -15,6 +15,10 @@ import NotFound from './pages/404'
 import ProductDetails from './pages/productDetails/ProductDetails'
 import Cart from './pages/cart/Cart'
 import Checkout from './pages/cart/Checkout'
+import Wishlist from './pages/wishlist/Wishlist'
+import Chat from './pages/chat/Chat'
+import Support from './pages/admin/Support'
+import Coupons from './pages/admin/Coupons'
 
 export default function App() {
   return (
@@ -30,6 +34,8 @@ export default function App() {
             <Route path="/products/:id" element={<ProductDetails />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/chat" element={<Chat />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Route>
@@ -40,6 +46,8 @@ export default function App() {
             <Route path="/admin/users" element={<Users />} />
             <Route path="/admin/orders" element={<Orders />} />
             <Route path="/admin/products" element={<Products />} />
+            <Route path="/admin/coupons" element={<Coupons />} />
+            <Route path="/admin/support" element={<Support />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Route>

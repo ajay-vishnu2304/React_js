@@ -84,6 +84,7 @@ const Orders = () => {
     <div>
       <h1>Orders</h1>
 
+      <div className="table-wrap">
       <table className="admin-table">
         <thead>
           <tr>
@@ -145,6 +146,7 @@ const Orders = () => {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 };

@@ -13,6 +13,7 @@ export default function Cart() {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
 
   useEffect(() => {
+   
     if (isAuthenticated) {
       authFetch("/carts/cart")
         .then((res) => res.json())
@@ -24,6 +25,7 @@ export default function Cart() {
           }
         });
     }
+    return () => {};
   }, [isAuthenticated, authFetch, dispatch, navigate]);
 
   const reloadCart = () => {

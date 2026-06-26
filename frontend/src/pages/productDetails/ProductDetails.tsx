@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { useAuthenticatedFetch } from "../../hooks/useAuthenticatedFetch";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { setCart } from "../../store/slices/cartSlice";
+import { setWishlist } from "../../store/slices/wishlistSlice";
 import { decQty, incQty } from "../../store/slices/quantitySlice";
 import "./ProductDetails.css";
 
@@ -32,6 +33,10 @@ export default function ProductDetails() {
   const quantity = useAppSelector(
     (state) => state.quantities.byProduct[productId] ?? 1,
   );
+  const wishlistItems = useAppSelector((state) => state.wishlist.items);
+
+  const wishlistProductIds = new Set(wishlistItems.map((i) => i.productId));
+
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -86,6 +91,12 @@ export default function ProductDetails() {
       .then((data) => dispatch(setCart(data)));
   };
 
+  const reloadWishlist = () => {
+    authFetch("/wishlists/wishlist")
+      .then((res) => res.json())
+      .then((data) => dispatch(setWishlist(data)));
+  };
+
   const handleAddToCart = async () => {
     if (!product || product.stock_no === 0) return;
     try {
@@ -103,6 +114,33 @@ export default function ProductDetails() {
       toast.success("Added to cart!");
     } catch {
       toast.error("Failed to add to cart");
+    }
+  };
+
+  const handleToggleWishlist = async () => {
+    if (!product) return;
+    try {
+      const existing = wishlistItems.find((i) => i.productId === product.id);
+      if (existing) {
+        await authFetch(`/wishlist-items/${existing.id}`, {
+          method: "DELETE",
+        });
+        toast.success("Removed from wishlist");
+      } else {
+        const wishlistRes = await authFetch("/wishlists/wishlist");
+        const wishlistData = await wishlistRes.json();
+        await authFetch("/wishlist-items", {
+          method: "POST",
+          body: JSON.stringify({
+            wishlist_id: wishlistData.wishlistId,
+            product_id: product.id,
+          }),
+        });
+        toast.success("Added to wishlist!");
+      }
+      reloadWishlist();
+    } catch {
+      toast.error("Failed to update wishlist");
     }
   };
 
@@ -195,6 +233,26 @@ export default function ProductDetails() {
               disabled={product.stock_no === 0}
             >
               {product.stock_no === 0 ? "Out of Stock" : "Add to Cart"}
+            </button>
+            <button
+              className={`btn-wishlist ${wishlistProductIds.has(product.id) ? "active" : ""}`}
+              title="Toggle wishlist"
+              onClick={handleToggleWishlist}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="22"
+                height="22"
+                aria-hidden="true"
+              >
+                <path
+                  d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                  fill={wishlistProductIds.has(product.id) ? "#ef4444" : "none"}
+                  stroke="#ef4444"
+                  strokeWidth="1.8"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
           </div>
         </div>

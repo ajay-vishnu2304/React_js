@@ -9,9 +9,14 @@ node_modules/
 # Build output
 dist/
 build/
+dist-ssr/
+
+# Test coverage
+coverage/
 
 # IDE
-.vscode/
+.vscode/*
+!.vscode/extensions.json
 .idea/
 
 # OS
@@ -19,5 +24,17 @@ build/
 Thumbs.db
 
 # Logs
+logs
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Visual Studio files
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

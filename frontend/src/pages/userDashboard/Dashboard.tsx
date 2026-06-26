@@ -6,6 +6,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useAuthenticatedFetch } from "../../hooks/useAuthenticatedFetch";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { setCart } from "../../store/slices/cartSlice";
+import { setWishlist } from "../../store/slices/wishlistSlice";
 import { decQty, incQty } from "../../store/slices/quantitySlice";
 
 interface Product {
@@ -29,6 +30,8 @@ const Dashboard = () => {
   const [offset, setOffset] = useState(0);
 
   const quantities = useAppSelector((state) => state.quantities.byProduct);
+  const wishlistItems = useAppSelector((state) => state.wishlist.items);
+  const wishlistProductIds = new Set(wishlistItems.map((i) => i.productId));
 
   const limit = 6;
 
@@ -62,6 +65,12 @@ const Dashboard = () => {
       .then((data) => dispatch(setCart(data)));
   };
 
+  const reloadWishlist = () => {
+    authFetch("/wishlists/wishlist")
+      .then((res) => res.json())
+      .then((data) => dispatch(setWishlist(data)));
+  };
+
   const handleAddToCart = async (p: Product) => {
     if (p.stock_no === 0) return;
     try {
@@ -79,6 +88,32 @@ const Dashboard = () => {
       toast.success("Added to cart!");
     } catch {
       toast.error("Failed to add to cart");
+    }
+  };
+
+  const handleToggleWishlist = async (productId: number) => {
+    try {
+      const existing = wishlistItems.find((i) => i.productId === productId);
+      if (existing) {
+        await authFetch(`/wishlist-items/${existing.id}`, {
+          method: "DELETE",
+        });
+        toast.success("Removed from wishlist");
+      } else {
+        const wishlistRes = await authFetch("/wishlists/wishlist");
+        const wishlistData = await wishlistRes.json();
+        await authFetch("/wishlist-items", {
+          method: "POST",
+          body: JSON.stringify({
+            wishlist_id: wishlistData.wishlistId,
+            product_id: productId,
+          }),
+        });
+        toast.success("Added to wishlist!");
+      }
+      reloadWishlist();
+    } catch {
+      toast.error("Failed to update wishlist");
     }
   };
 
@@ -170,16 +205,36 @@ const Dashboard = () => {
                 </button>
               </div>
 
-              <button
-                className="btn-add-cart"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAddToCart(p);
-                }}
-                disabled={p.stock_no === 0}
-              >
-                {p.stock_no === 0 ? "Out of Stock" : "Add to Cart"}
-              </button>
+              <div className="card-actions">
+                <button
+                  className="btn-add-cart"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddToCart(p);
+                  }}
+                  disabled={p.stock_no === 0}
+                >
+                  {p.stock_no === 0 ? "Out of Stock" : "Add to Cart"}
+                </button>
+                <button
+                  className={`btn-wishlist ${wishlistProductIds.has(p.id) ? "active" : ""}`}
+                  title="Toggle wishlist"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleWishlist(p.id);
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path
+                      d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                      fill={wishlistProductIds.has(p.id) ? "#ef4444" : "none"}
+                      stroke="#ef4444"
+                      strokeWidth="1.8"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
           ))}
         </div>

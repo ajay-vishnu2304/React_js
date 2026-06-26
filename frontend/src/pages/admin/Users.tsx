@@ -68,7 +68,7 @@ const Users = () => {
         return;
       }
       fetchUsers();
-    } catch (err) {
+    } catch {
       alert("Network error. Please try again.");
       fetchUsers();
     }
@@ -86,7 +86,7 @@ const Users = () => {
         return;
       }
       fetchUsers();
-    } catch (err) {
+    } catch {
       alert("Network error. Please try again.");
     }
   };
@@ -164,6 +164,7 @@ const Users = () => {
         </div>
       )}
 
+      <div className="table-wrap">
       <table className="admin-table">
         <thead>
           <tr>
@@ -201,6 +202,7 @@ const Users = () => {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { clearCart } from "../../store/slices/cartSlice";
 import { useAuthenticatedFetch } from "../../hooks/useAuthenticatedFetch";
+import { toast } from "react-toastify";
 
 interface SavedAddress {
   id: number;
@@ -40,12 +41,46 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ name: string; discount_percentage: number } | null>(null);
+  const [couponError, setCouponError] = useState("");
+
   const subtotal = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0,
   );
-  const tax = subtotal * 0.05;
-  const total = subtotal + tax;
+
+  let discount = 0;
+  if (appliedCoupon) {
+    discount = (subtotal * appliedCoupon.discount_percentage) / 100;
+  }
+
+  const tax = (subtotal - discount) * 0.05;
+  const total = subtotal - discount + tax;
+
+  async function handleApplyCoupon() {
+    setCouponError("");
+    if (!couponCode.trim()) {
+      setCouponError("Enter a coupon code");
+      return;
+    }
+    try {
+      const res = await authFetch(`/coupons/validate/${couponCode.trim()}`);
+      const data = await res.json();
+      setAppliedCoupon(data);
+      toast.success(`${data.name} applied (${data.discount_percentage}% off)`);
+    } catch {
+      setAppliedCoupon(null);
+      setCouponError("Invalid or expired coupon");
+      toast.error("Invalid or expired coupon");
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError("");
+  }
 
   useEffect(() => {
     authFetch("/address")
@@ -135,7 +170,10 @@ export default function Checkout() {
 
       const res = await authFetch("/orders/checkout", {
         method: "POST",
-        body: JSON.stringify({ address_id: addressId }),
+        body: JSON.stringify({
+          address_id: addressId,
+          coupon_code: appliedCoupon ? appliedCoupon.name : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to place order");
@@ -282,6 +320,41 @@ export default function Checkout() {
             <span>Subtotal</span>
             <span>${subtotal.toFixed(2)}</span>
           </div>
+
+          <div className="coupon-box">
+            <input
+              type="text"
+              placeholder="Coupon code (optional)"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value)}
+              disabled={!!appliedCoupon}
+            />
+            {appliedCoupon ? (
+              <button
+                className="btn-remove-coupon"
+                type="button"
+                onClick={handleRemoveCoupon}
+              >
+                Remove
+              </button>
+            ) : (
+              <button
+                className="btn-apply-coupon"
+                type="button"
+                onClick={handleApplyCoupon}
+              >
+                Apply
+              </button>
+            )}
+          </div>
+          {couponError && <p className="coupon-error">{couponError}</p>}
+
+          {discount > 0 && (
+            <div className="checkout-total">
+              <span>Discount</span>
+              <span>-${discount.toFixed(2)}</span>
+            </div>
+          )}
           <div className="checkout-total">
             <span>Tax (5%)</span>
             <span>${tax.toFixed(2)}</span>

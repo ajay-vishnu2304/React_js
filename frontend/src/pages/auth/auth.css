@@ -14,6 +14,7 @@
 
 .authcard {
   width: 400px;
+  max-width: 90vw;
   background: white;
   padding: 2rem;
   border-radius: 12px;
@@ -68,4 +69,15 @@ button:hover {
 .auth-footer a {
   color: #2563eb;
   text-decoration: none;
+}
+
+/* ===== Responsive (mobile) ===== */
+@media (max-width: 480px) {
+  .authcard {
+    padding: 1.5rem;
+  }
+
+  .auth-title {
+    font-size: 1.3rem;
+  }
 }

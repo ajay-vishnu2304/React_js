@@ -1,0 +1,78 @@
+/* user chat page */
+.user-chat-page {
+  border: 2px solid gray;
+  height: 500px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+/* admin support page */
+.support-page {
+  display: flex;
+  border: 2px solid gray;
+  height: 500px;
+  background: white;
+  margin-top: 10px;
+}
+
+.users-list {
+  width: 25%;
+  border-right: 2px solid gray;
+  padding: 10px;
+  overflow-y: auto;
+  background: #f9f9f9;
+}
+
+.user-btn {
+  width: 100%;
+  text-align: left;
+  padding: 10px;
+  margin-bottom: 5px;
+  border: 1px solid gray;
+  background: white;
+  color: black;
+  cursor: pointer;
+}
+
+.user-btn.active {
+  background: #dbeafe;
+}
+
+.chat-section {
+  width: 75%;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+}
+
+/* ===== Responsive (mobile) ===== */
+@media (max-width: 768px) {
+  .support-page {
+    flex-direction: column;
+    height: calc(100vh - 160px);
+  }
+
+  .users-list {
+    width: 100%;
+    border-right: none;
+    border-bottom: 2px solid gray;
+    max-height: 150px;
+    flex: 0 0 auto;
+  }
+
+  .chat-section {
+    width: 100%;
+    flex: 1;
+  }
+
+  .user-chat-page {
+    height: calc(100vh - 160px);
+  }
+
+  .empty {
+    margin-top: 60px;
+  }
+}

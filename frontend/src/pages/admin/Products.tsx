@@ -186,6 +186,7 @@ const Products = () => {
         onClose={() => setShowModal(false)}
       />
 
+      <div className="table-wrap">
       <table className="admin-table">
         <thead>
           <tr>
@@ -230,6 +231,7 @@ const Products = () => {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 };

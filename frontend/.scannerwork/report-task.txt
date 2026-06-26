@@ -1,0 +1,6 @@
+projectKey=Ecommerce-frontend
+serverUrl=http://localhost:9000
+serverVersion=26.4.0.121862
+dashboardUrl=http://localhost:9000/dashboard?id=Ecommerce-frontend
+ceTaskId=c22212eb-e931-40c1-9cf9-1736f0b7d3ba
+ceTaskUrl=http://localhost:9000/api/ce/task?id=c22212eb-e931-40c1-9cf9-1736f0b7d3ba
